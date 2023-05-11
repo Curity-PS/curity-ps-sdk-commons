@@ -2,6 +2,7 @@
 .project
 .settings/
 .editorconfig
+target/
 
 #archives
 *.tgz
