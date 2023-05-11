@@ -1,0 +1,37 @@
+.classpath
+.project
+.settings/
+.editorconfig
+
+#archives
+*.tgz
+*.tgz.asc
+
+# Intellij
+.idea/
+!.idea/copyright/
+!.idea/copyright/*.xml
+*.iml
+*.iws
+
+# Logs
+*.log
+
+# Mac
+.DS_Store
+
+# Maven
+log/
+target/
+atlassian-ide-plugin.xml
+*.swp
+velocity.log*
+localhost:*.access
+/dist/
+/debug/lib
+/debug/*.sql
+stage/fxs
+pom.xml.versionsBackup
+/previewer/
+
+**/build/
