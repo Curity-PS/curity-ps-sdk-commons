@@ -33,7 +33,7 @@ public final class StringUtils
      * @param stringValue string value to test
      * @return true when it's a valid boolean value
      */
-    static boolean isValidBoolean(@Nullable String stringValue)
+    public static boolean isValidBoolean(@Nullable String stringValue)
     {
         return "true".equals(stringValue) ||
                 "false".equals(stringValue);
