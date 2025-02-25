@@ -16,18 +16,22 @@
 
 package io.curity.identityserver.plugins.utils;
 
-import com.google.common.base.Throwables;
-import org.apache.commons.lang3.StringUtils;
+import se.curity.identityserver.sdk.Nullable;
 import se.curity.identityserver.sdk.NullableFunction;
 import se.curity.identityserver.sdk.attribute.Attribute;
 
-import javax.annotation.Nullable;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class NullUtils
 {
+    /**
+     * Returns the value if it is not null, otherwise throws a NullPointerException with the provided error description
+     *
+     * @return the value if it is not null
+     * @throws NullPointerException if the value is null
+     */
     public static <T> T valueOrError(@Nullable T value, String errorDescription)
             throws NullPointerException
     {
@@ -41,12 +45,27 @@ public class NullUtils
         }
     }
 
+    /**
+     * Returns the value of the specified type if it is not null, otherwise throws a NullPointerException with the provided error description
+     *
+     * @param type             the type to return
+     * @param value            the value to return if it is not null
+     * @param errorDescription the error description to use in the exception if the value is null or not of the expected type
+     * @return the value with the correct type
+     * @throws NullPointerException if the value is null
+     */
     public static <T> T valueOrError(Class<T> type, @Nullable Object value, String errorDescription)
             throws NullPointerException
     {
         return valueOrError(optionalValueOfType(type, value), errorDescription);
     }
 
+    /**
+     * Perform an operation on a value if it is not null
+     *
+     * @param value that will be passed to the consumer if it is not null
+     * @param useValue the consumer that will be called with the value if it is not null
+     */
     public static <T> void ifNotNull(@Nullable T value, Consumer<T> useValue)
     {
         if (value != null)
@@ -147,22 +166,4 @@ public class NullUtils
         }
         return value;
     }
-
-    public static String rootCauseErrorMessage(@Nullable Throwable e)
-    {
-        String unknownError = "No additional details";
-
-        if (e == null)
-        {
-            return unknownError;
-        }
-
-        return map(Throwables.getRootCause(e), t ->
-        {
-            @Nullable String maybeMessage = t.getMessage();
-
-            return StringUtils.isEmpty(maybeMessage) ? unknownError : maybeMessage;
-        }, () -> unknownError);
-    }
 }
-

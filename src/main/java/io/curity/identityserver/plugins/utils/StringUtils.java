@@ -16,7 +16,7 @@
 
 package io.curity.identityserver.plugins.utils;
 
-import javax.annotation.Nullable;
+import se.curity.identityserver.sdk.Nullable;
 
 /**
  * Utility functions around string handling and validation
