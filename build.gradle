@@ -11,17 +11,13 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'se.curity.identityserver:identityserver.sdk:10.0.0'
+    compileOnly 'se.curity.identityserver:identityserver.sdk:10.2.0'
     compileOnly 'org.slf4j:slf4j-api:2.0.12'
 
     implementation 'org.bitbucket.b_c:jose4j:0.9.4'
 
     testImplementation 'se.curity.identityserver:identityserver.sdk:10.0.0'
     testImplementation 'org.spockframework:spock-core:2.4-M4-groovy-4.0'
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.1'
-    testImplementation 'com.github.tomakehurst:wiremock-jre8:2.31.0'
-
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.2'
 }
 
 java {
