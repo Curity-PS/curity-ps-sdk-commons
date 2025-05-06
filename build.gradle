@@ -15,7 +15,7 @@ publishing {
     repositories {
         maven {
             name = "CurityPsPackages"
-            url = "https://maven.pkg.github.com/curity-ps/packages"
+            url = "https://maven.pkg.github.com/curity-ps/curity-ps-sdk-commons"
             credentials {
                 username = System.getenv("GITHUB_ACTOR")
                 password = System.getenv("GITHUB_TOKEN")
