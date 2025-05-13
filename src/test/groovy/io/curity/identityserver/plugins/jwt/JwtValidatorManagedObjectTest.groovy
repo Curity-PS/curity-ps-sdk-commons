@@ -1,8 +1,7 @@
-package plugins.jwt
+package io.curity.identityserver.plugins.jwt
 
-import io.curity.identityserver.plugins.jwt.JwtValidatorConfiguration
+
 import io.curity.identityserver.plugins.jwt.JwtValidatorConfiguration.KeyResolverConfiguration
-import io.curity.identityserver.plugins.jwt.JwtValidatorManagedObject
 import org.jose4j.jwk.JsonWebKeySet
 import org.jose4j.jwt.consumer.InvalidJwtException
 import org.jose4j.lang.UnresolvableKeyException
@@ -14,6 +13,8 @@ import se.curity.identityserver.sdk.service.crypto.AsymmetricSignatureVerificati
 import spock.lang.Specification
 
 import java.security.PublicKey
+
+import static io.curity.identityserver.plugins.jwt.JwtValidatorConfiguration.JwksUriKeyResolverConfiguration
 
 class JwtValidatorManagedObjectTest extends Specification {
 
@@ -144,77 +145,65 @@ class JwtValidatorManagedObjectTest extends Specification {
 
     private KeyResolverConfiguration mockedStaticKeyResolver() {
         return Mock(KeyResolverConfiguration) {
+            getJwksUri() >> Optional.empty()
             getVerificationCryptoStore() >> {
-                return Mock(AsymmetricSignatureVerificationCryptoStore) {
+                return Optional.of(Mock(AsymmetricSignatureVerificationCryptoStore) {
                     getPublicKey() >> {
                         return getFirstPublicKeyFromJwks(jwksJson)
                     }
-                }
+                })
             }
         }
     }
 
-    private static JwtValidatorConfiguration mockedJwksUriConfiguration(HttpClient httpClient) {
-        return mockedConfiguration(mockedJwksUriKeyResolver(httpClient))
+    private JwtValidatorConfiguration mockedJwksUriConfiguration(HttpClient httpClient) {
+        return Mock(JwtValidatorConfiguration) {
+            getKeyResolverConfiguration() >> {
+                return mockedJwksUriKeyResolver(httpClient)
+            }
+
+            getExpectedAudience() >> {
+                return "test-audience"
+            }
+
+            getExpectedIssuer() >> {
+                return "test-issuer"
+            }
+        }
     }
 
-    private static JwtValidatorConfiguration mockedConfiguration(KeyResolverConfiguration keyResolverConfiguration,
+    private JwtValidatorConfiguration mockedConfiguration(KeyResolverConfiguration keyResolverConfiguration,
                                                                  String audience = "test-audience",
                                                                  String issuer = "test-issuer") {
-        return new JwtValidatorConfiguration() {
-
-            @Override
-            KeyResolverConfiguration getKeyResolverConfiguration() {
+        return Mock(JwtValidatorConfiguration) {
+            getKeyResolverConfiguration() >> {
                 return keyResolverConfiguration
             }
 
-            @Override
-            String getExpectedAudience() {
+            getExpectedAudience() >> {
                 return audience
             }
 
-            @Override
-            String getExpectedIssuer() {
+            getExpectedIssuer() >> {
                 return issuer
-            }
-
-            @Override
-            String id() {
-                return "jwt-validator"
             }
         }
     }
 
-    private static KeyResolverConfiguration mockedJwksUriKeyResolver(HttpClient mockedHttpClient) {
-        return new KeyResolverConfiguration() {
-            @Override
-            AsymmetricSignatureVerificationCryptoStore getVerificationCryptoStore() {
-                return null
-            }
+    private KeyResolverConfiguration mockedJwksUriKeyResolver(HttpClient mockedHttpClient) {
+        return Mock(KeyResolverConfiguration) {
+            getVerificationCryptoStore() >> Optional.empty()
 
-            @Override
-            JwtValidatorConfiguration.JwksUriKeyResolverConfiguration getJwksUri() {
-                return new JwtValidatorConfiguration.JwksUriKeyResolverConfiguration() {
-                    @Override
-                    HttpClient getHttpClient() {
+            getJwksUri() >> {
+                return Optional.of(Mock(JwksUriKeyResolverConfiguration) {
+                    getHttpClient() >> {
                         return mockedHttpClient
                     }
 
-                    @Override
-                    URL getJwksUri() {
-                        return new URL("http://localhost:8080/.well-known/jwks.json")
+                    getJwksUri() >> {
+                        return new URI("http://localhost:8080/.well-known/jwks.json")
                     }
-
-                    @Override
-                    String id() {
-                        return "test-jwks-uri-resolver"
-                    }
-                }
-            }
-
-            @Override
-            String id() {
-                return "test-jwks-uri"
+                })
             }
         }
     }

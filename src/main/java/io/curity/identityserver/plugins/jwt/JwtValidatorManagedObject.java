@@ -16,51 +16,65 @@
 
 package io.curity.identityserver.plugins.jwt;
 
-import org.jose4j.jwk.HttpsJwks;
 import org.jose4j.jwt.consumer.InvalidJwtException;
-import org.jose4j.jwt.consumer.JwtConsumer;
-import org.jose4j.jwt.consumer.JwtConsumerBuilder;
 import org.jose4j.jwt.consumer.JwtContext;
-import org.jose4j.keys.resolvers.HttpsJwksVerificationKeyResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.curity.identityserver.sdk.config.Configuration;
+import se.curity.identityserver.sdk.errors.ErrorCode;
 import se.curity.identityserver.sdk.plugin.ManagedObject;
+import se.curity.identityserver.sdk.service.ExceptionFactory;
 
 /**
- * A JWT validator to be used as a managed object. Requires a {@link JwtValidatorConfiguration} that configures
+ * A managed object for JWT validation. Requires a {@link JwtValidatorConfiguration} that configures
  * how to collect key material and how the JWT should be validated
+ * Keeps an internal @{link JwtValidator} that is used to validate the JWT, which is responsible for caching the key material
+ * <p>
+ * Ready to be added to a plugin descriptor
  */
-public final class JwtValidatorManagedObject<T extends JwtValidatorConfiguration> extends ManagedObject<T>
+public final class JwtValidatorManagedObject<T extends Configuration> extends ManagedObject<T>
 {
     private static final Logger _logger = LoggerFactory.getLogger(JwtValidatorManagedObject.class);
-    private final JwtConsumer _consumer;
+    private final JwtValidator _validator;
+    private final ExceptionFactory _exceptionFactory;
+    private final JwtValidatorConfiguration _configuration;
 
-    public JwtValidatorManagedObject(T config)
+    JwtValidatorManagedObject(JwtValidatorConfiguration jwtValidatorConfiguration)
     {
-        super(config);
-        _consumer = createJwtConsumer(config);
+        //noinspection unchecked
+        super((T) jwtValidatorConfiguration);
+        _configuration = jwtValidatorConfiguration;
+        _validator = createJwtValidator(jwtValidatorConfiguration);
+        _exceptionFactory = jwtValidatorConfiguration.getExceptionFactory();
     }
 
-    private JwtConsumer createJwtConsumer(T config)
+    public JwtValidatorManagedObject(T config, JwtValidatorConfiguration jwtValidatorConfiguration)
     {
-        JwtConsumerBuilder builder = new JwtConsumerBuilder()
-                .setRequireSubject()
-                .setExpectedAudience(config.getExpectedAudience())
-                .setExpectedIssuer(config.getExpectedIssuer());
+        super(config);
+        _configuration = jwtValidatorConfiguration;
+        _validator = createJwtValidator(jwtValidatorConfiguration);
+        _exceptionFactory = jwtValidatorConfiguration.getExceptionFactory();
+    }
 
-        var keyResolverConfiguration = config.getKeyResolverConfiguration();
-        if (keyResolverConfiguration.getJwksUri() != null)
+    private JwtValidator createJwtValidator(JwtValidatorConfiguration config)
+    {
+        if (config.getKeyResolverConfiguration().getJwksUri().isPresent())
         {
-            var httpsJwks = new HttpsJwks(keyResolverConfiguration.getJwksUri().getJwksUri().toExternalForm());
-            httpsJwks.setSimpleHttpGet(new CustomSimpleGet(keyResolverConfiguration.getJwksUri().getHttpClient()));
-            builder.setVerificationKeyResolver(new HttpsJwksVerificationKeyResolver(httpsJwks));
+            _logger.debug("Creating JWT validator using JWKs URI");
+            var jwksUriConfiguration = config.getKeyResolverConfiguration().getJwksUri().get();
+            return new JwksUriJwtValidator(jwksUriConfiguration.getJwksUri(), jwksUriConfiguration.getHttpClient());
         }
-        else if (keyResolverConfiguration.getVerificationCryptoStore() != null)
+        else if (config.getKeyResolverConfiguration().getVerificationCryptoStore().isPresent())
         {
-            builder.setVerificationKey(keyResolverConfiguration.getVerificationCryptoStore().getPublicKey());
+            _logger.debug("Creating JWT validator using a configured keystore");
+            var verificationCryptoStore = config.getKeyResolverConfiguration().getVerificationCryptoStore().get();
+            return new ConfiguredKeyJwtValidator(verificationCryptoStore);
         }
-
-        return builder.build();
+        else
+        {
+            throw _exceptionFactory.internalServerException(ErrorCode.CONFIGURATION_ERROR,
+                    "No valid key resolver configuration found");
+        }
     }
 
     /**
@@ -72,6 +86,8 @@ public final class JwtValidatorManagedObject<T extends JwtValidatorConfiguration
      */
     public JwtContext validate(String token) throws InvalidJwtException
     {
-        return _consumer.process(token);
+        _logger.debug("Validating JWT token with expected audience '{}' and issuer '{}'",
+                _configuration.getExpectedAudience(), _configuration.getExpectedIssuer());
+        return _validator.validateJwt(token, _configuration.getExpectedIssuer(), _configuration.getExpectedAudience());
     }
 }

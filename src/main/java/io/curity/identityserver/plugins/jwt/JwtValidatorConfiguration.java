@@ -4,10 +4,12 @@ import se.curity.identityserver.sdk.config.Configuration;
 import se.curity.identityserver.sdk.config.OneOf;
 import se.curity.identityserver.sdk.config.annotation.DefaultService;
 import se.curity.identityserver.sdk.config.annotation.Description;
+import se.curity.identityserver.sdk.service.ExceptionFactory;
 import se.curity.identityserver.sdk.service.HttpClient;
 import se.curity.identityserver.sdk.service.crypto.AsymmetricSignatureVerificationCryptoStore;
 
-import java.net.URL;
+import java.net.URI;
+import java.util.Optional;
 
 public interface JwtValidatorConfiguration extends Configuration
 {
@@ -21,10 +23,10 @@ public interface JwtValidatorConfiguration extends Configuration
 
     interface KeyResolverConfiguration extends OneOf
     {
-        AsymmetricSignatureVerificationCryptoStore getVerificationCryptoStore();
+        Optional<AsymmetricSignatureVerificationCryptoStore> getVerificationCryptoStore();
 
         @Description("Resolve the verification key through a JWKS URI")
-        JwksUriKeyResolverConfiguration getJwksUri();
+        Optional<JwksUriKeyResolverConfiguration> getJwksUri();
     }
 
     interface JwksUriKeyResolverConfiguration extends Configuration
@@ -33,6 +35,8 @@ public interface JwtValidatorConfiguration extends Configuration
         HttpClient getHttpClient();
 
         @Description("The JWKS URI")
-        URL getJwksUri();
+        URI getJwksUri();
     }
+
+    ExceptionFactory getExceptionFactory();
 }
