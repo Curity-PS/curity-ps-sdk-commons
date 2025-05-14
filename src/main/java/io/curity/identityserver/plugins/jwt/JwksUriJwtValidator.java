@@ -32,7 +32,7 @@ public final class JwksUriJwtValidator implements JwtValidator
     }
 
     @Override
-    public JwtContext validateJwt(String jwt, String issuer, String audience)
+    public JwtContext validateJwt(String jwt, String issuer, String audience) throws InvalidJwtException
     {
         try
         {
@@ -41,7 +41,7 @@ public final class JwksUriJwtValidator implements JwtValidator
         catch (InvalidJwtException e)
         {
             _logger.warn("Invalid JWT: {}", e.getMessage());
-            throw new RuntimeException("Invalid JWT", e);
+            throw e;
         }
     }
 
