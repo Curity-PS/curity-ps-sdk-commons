@@ -1,6 +1,5 @@
 package io.curity.identityserver.plugins.jwt
 
-
 import io.curity.identityserver.plugins.jwt.JwtValidatorConfiguration.KeyResolverConfiguration
 import org.jose4j.jwk.JsonWebKeySet
 import org.jose4j.jwt.consumer.InvalidJwtException
@@ -54,10 +53,10 @@ class JwtValidatorManagedObjectTest extends Specification {
         def jwtValidator = new JwtValidatorManagedObject(config)
 
         when:
-        def validJwtContext = jwtValidator.validate(validJwt)
+        def validatedClaims = jwtValidator.validate(validJwt)
 
         then:
-        validJwtContext.getJwtClaims() != null
+        validatedClaims.sub != null
     }
 
     def "Jwks URI is only called once when validating multiple times"() {
@@ -68,10 +67,10 @@ class JwtValidatorManagedObjectTest extends Specification {
 
         when:
         jwtValidator.validate(validJwt)
-        def validJwtContext = jwtValidator.validate(validJwt)
+        def validatedClaims = jwtValidator.validate(validJwt)
 
         then:
-        validJwtContext.getJwtClaims() != null
+        validatedClaims.sub != null
         // Expectations are set up so that the httpClient is only called once in #mockedJwksUriResponse
     }
 
@@ -81,10 +80,10 @@ class JwtValidatorManagedObjectTest extends Specification {
         def jwtValidator = new JwtValidatorManagedObject(config)
 
         when:
-        def validJwtContext = jwtValidator.validate(validJwt)
+        def validatedClaims = jwtValidator.validate(validJwt)
 
         then:
-        validJwtContext.getJwtClaims() != null
+        validatedClaims.sub != null
     }
 
     def "JWKS URI config fails when JWKS document is not available"() {
@@ -96,8 +95,9 @@ class JwtValidatorManagedObjectTest extends Specification {
         jwtValidator.validate(validJwt)
 
         then:
-        def thrown = thrown(InvalidJwtException)
-        thrown.cause instanceof UnresolvableKeyException
+        def thrown = thrown(JwtValidationException)
+        thrown.cause instanceof InvalidJwtException
+        thrown.cause.cause instanceof UnresolvableKeyException
     }
 
     def "JWKS URI config does not require content type to be JSON"() {
@@ -110,7 +110,7 @@ class JwtValidatorManagedObjectTest extends Specification {
         def validJwtContext = jwtValidator.validate(validJwt)
 
         then:
-        validJwtContext.getJwtClaims() != null
+        validJwtContext.sub != null
     }
 
     def "JWT validator rejects token with invalid audience"() {
@@ -122,7 +122,7 @@ class JwtValidatorManagedObjectTest extends Specification {
         jwtValidator.validate(validJwt)
 
         then:
-        thrown(InvalidJwtException)
+        thrown(JwtValidationException)
 
         where:
         keyResolver <<[mockedStaticKeyResolver(), mockedJwksUriKeyResolver(mockedJwksUriResponse(jwksJson))]
@@ -137,7 +137,7 @@ class JwtValidatorManagedObjectTest extends Specification {
         jwtValidator.validate(validJwt)
 
         then:
-        thrown(InvalidJwtException)
+        thrown(JwtValidationException)
 
         where:
         keyResolver <<[mockedStaticKeyResolver(), mockedJwksUriKeyResolver(mockedJwksUriResponse(jwksJson))]

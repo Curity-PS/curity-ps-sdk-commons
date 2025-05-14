@@ -4,7 +4,6 @@ import org.jose4j.jwk.HttpsJwks;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.JwtConsumer;
 import org.jose4j.jwt.consumer.JwtConsumerBuilder;
-import org.jose4j.jwt.consumer.JwtContext;
 import org.jose4j.keys.resolvers.HttpsJwksVerificationKeyResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +12,7 @@ import se.curity.identityserver.sdk.service.HttpClient;
 
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.util.Map;
 
 /**
  * Jwt Validator built to be used in a managed object.
@@ -32,16 +32,17 @@ public final class JwksUriJwtValidator implements JwtValidator
     }
 
     @Override
-    public JwtContext validateJwt(String jwt, String issuer, String audience) throws InvalidJwtException
+    public Map<String, Object> validateJwt(String jwt, String issuer, String audience)
     {
         try
         {
-            return createJwtConsumer(issuer, audience).process(jwt);
+             var claims = createJwtConsumer(issuer, audience).processToClaims(jwt);
+             return claims.getClaimsMap();
         }
         catch (InvalidJwtException e)
         {
             _logger.warn("Invalid JWT: {}", e.getMessage());
-            throw e;
+            throw new JwtValidationException(e);
         }
     }
 

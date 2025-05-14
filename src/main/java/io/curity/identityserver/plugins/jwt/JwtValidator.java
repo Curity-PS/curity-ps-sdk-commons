@@ -1,7 +1,6 @@
 package io.curity.identityserver.plugins.jwt;
 
-import org.jose4j.jwt.consumer.InvalidJwtException;
-import org.jose4j.jwt.consumer.JwtContext;
+import java.util.Map;
 
 public interface JwtValidator
 {
@@ -11,7 +10,7 @@ public interface JwtValidator
      * @param jwt      to validate
      * @param issuer   String that has to match the `iss` claim of the JWT
      * @param audience String that has to be in the `aud` claim of the JWT
-     * @return JwtContext object containing the claims of the JWT
+     * @return Map of claims in the JWT
      */
-    JwtContext validateJwt(String jwt, String issuer, String audience) throws InvalidJwtException;
+    Map<String, Object> validateJwt(String jwt, String issuer, String audience) throws JwtValidationException;
 }
