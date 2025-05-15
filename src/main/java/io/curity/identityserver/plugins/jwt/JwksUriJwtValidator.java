@@ -13,6 +13,7 @@ import se.curity.identityserver.sdk.service.HttpClient;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Jwt Validator built to be used in a managed object.
@@ -38,12 +39,12 @@ public final class JwksUriJwtValidator implements JwtValidator
     }
 
     @Override
-    public Map<String, Object> validateJwt(String jwt, String issuer, String audience)
+    public Map<String, Object> validateJwt(String jwt, String issuer, String audience, Set<String> excludeClaims) throws JwtValidationException
     {
         try
         {
-             var claims = createJwtConsumer(issuer, audience).processToClaims(jwt);
-             return claims.getClaimsMap();
+            var claims = createJwtConsumer(issuer, audience).processToClaims(jwt);
+            return claims.getClaimsMap(excludeClaims);
         }
         catch (InvalidJwtException e)
         {

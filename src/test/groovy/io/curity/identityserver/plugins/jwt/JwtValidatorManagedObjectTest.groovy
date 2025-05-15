@@ -125,7 +125,7 @@ class JwtValidatorManagedObjectTest extends Specification {
         thrown(JwtValidationException)
 
         where:
-        keyResolver <<[mockedStaticKeyResolver(), mockedJwksUriKeyResolver(mockedJwksUriResponse(jwksJson))]
+        keyResolver << [mockedStaticKeyResolver(), mockedJwksUriKeyResolver(mockedJwksUriResponse(jwksJson))]
     }
 
     def "JWT validator rejects token with invalid issuer"() {
@@ -140,20 +140,38 @@ class JwtValidatorManagedObjectTest extends Specification {
         thrown(JwtValidationException)
 
         where:
-        keyResolver <<[mockedStaticKeyResolver(), mockedJwksUriKeyResolver(mockedJwksUriResponse(jwksJson))]
+        keyResolver << [mockedStaticKeyResolver(), mockedJwksUriKeyResolver(mockedJwksUriResponse(jwksJson))]
+    }
+
+    def "JWT validator can validate token and omit specified claims from the result"() {
+        given: "A configured jwt validator"
+
+        when:
+        def validatedClaims = jwtValidator.validateJwt(validJwt, "test-issuer", "test-audience", Set.of("sub"))
+
+        then:
+        validatedClaims.sub == null
+        validatedClaims.scope == "read"
+
+        where:
+        jwtValidator << [new JwksUriJwtValidator(URI.create("https://localhost/jwks"), mockedJwksUriResponse(jwksJson)),
+                         new ConfiguredKeyJwtValidator(mockedCryptoStore())]
     }
 
     private KeyResolverConfiguration mockedStaticKeyResolver() {
         return Mock(KeyResolverConfiguration) {
             getJwksUri() >> Optional.empty()
             getVerificationCryptoStore() >> {
-                return Optional.of(Mock(AsymmetricSignatureVerificationCryptoStore) {
-                    getPublicKey() >> {
-                        return getFirstPublicKeyFromJwks(jwksJson)
-                    }
-                })
+                return Optional.of(mockedCryptoStore())
             }
         }
+    }
+    private mockedCryptoStore() {
+       return  Mock(AsymmetricSignatureVerificationCryptoStore) {
+           getPublicKey() >> {
+               return getFirstPublicKeyFromJwks(jwksJson)
+           }
+       }
     }
 
     private JwtValidatorConfiguration mockedJwksUriConfiguration(HttpClient httpClient) {
@@ -173,8 +191,8 @@ class JwtValidatorManagedObjectTest extends Specification {
     }
 
     private JwtValidatorConfiguration mockedConfiguration(KeyResolverConfiguration keyResolverConfiguration,
-                                                                 String audience = "test-audience",
-                                                                 String issuer = "test-issuer") {
+                                                          String audience = "test-audience",
+                                                          String issuer = "test-issuer") {
         return Mock(JwtValidatorConfiguration) {
             getKeyResolverConfiguration() >> {
                 return keyResolverConfiguration

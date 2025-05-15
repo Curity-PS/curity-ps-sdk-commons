@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import se.curity.identityserver.sdk.service.crypto.AsymmetricSignatureVerificationCryptoStore;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Jwt Validator built to be used in a managed object.
@@ -30,12 +31,12 @@ public final class ConfiguredKeyJwtValidator implements JwtValidator
     }
 
     @Override
-    public Map<String, Object> validateJwt(String jwt, String issuer, String audience)
+    public Map<String, Object> validateJwt(String jwt, String issuer, String audience, Set<String> excludedClaims)
     {
         try
         {
             var claims = createJwtConsumer(issuer, audience).processToClaims(jwt);
-            return claims.getClaimsMap();
+            return claims.getClaimsMap(excludedClaims);
         }
         catch (InvalidJwtException e)
         {
