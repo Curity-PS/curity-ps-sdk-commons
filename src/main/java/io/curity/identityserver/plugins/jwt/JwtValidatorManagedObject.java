@@ -31,6 +31,8 @@ import java.util.Map;
  * Keeps an internal @{link JwtValidator} that is used to validate the JWT, which is responsible for caching the key material
  * <p>
  * Ready to be added to a plugin descriptor
+ *
+ * @param <T> Configuration type for plugin
  */
 public final class JwtValidatorManagedObject<T extends Configuration> extends ManagedObject<T>
 {
@@ -48,6 +50,12 @@ public final class JwtValidatorManagedObject<T extends Configuration> extends Ma
         _exceptionFactory = jwtValidatorConfiguration.getExceptionFactory();
     }
 
+    /**
+     * Main constructor for the managed object
+     *
+     * @param config plugin config
+     * @param jwtValidatorConfiguration Configuration for the validator
+     */
     public JwtValidatorManagedObject(T config, JwtValidatorConfiguration jwtValidatorConfiguration)
     {
         super(config);

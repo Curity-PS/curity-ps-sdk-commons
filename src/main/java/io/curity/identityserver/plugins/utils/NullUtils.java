@@ -24,11 +24,21 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+/**
+ * Utility functions around null handling
+ */
 public class NullUtils
 {
+    private NullUtils()
+    {
+    }
+
     /**
      * Returns the value if it is not null, otherwise throws a NullPointerException with the provided error description
      *
+     * @param <T>              the type
+     * @param value            the value to return if it is not null
+     * @param errorDescription The error description to use in the exception if the value is null
      * @return the value if it is not null
      * @throws NullPointerException if the value is null
      */
@@ -51,6 +61,7 @@ public class NullUtils
      * @param type             the type to return
      * @param value            the value to return if it is not null
      * @param errorDescription the error description to use in the exception if the value is null or not of the expected type
+     * @param <T>              the type
      * @return the value with the correct type
      * @throws NullPointerException if the value is null
      */
@@ -63,7 +74,8 @@ public class NullUtils
     /**
      * Perform an operation on a value if it is not null
      *
-     * @param value that will be passed to the consumer if it is not null
+     * @param value    that will be passed to the consumer if it is not null
+     * @param <T>      the type
      * @param useValue the consumer that will be called with the value if it is not null
      */
     public static <T> void ifNotNull(@Nullable T value, Consumer<T> useValue)
@@ -74,6 +86,15 @@ public class NullUtils
         }
     }
 
+    /**
+     * Applies a transformation to an attribute if it is not null
+     *
+     * @param value                the attribute to transform
+     * @param transform            the transformation to apply
+     * @param defaultValueSupplier the supplier for the default value
+     * @param <R>                  the type of the result
+     * @return the transformed value, or the default value if the input value was null
+     */
     public static <R> R mapOptionalAttribute(@Nullable Attribute value, Function<Attribute, R> transform, Supplier<R> defaultValueSupplier)
     {
         if (value == null)
@@ -92,6 +113,15 @@ public class NullUtils
         }
     }
 
+    /**
+     * Applies a transformation to a value if it is not null
+     *
+     * @param value     the value to transform
+     * @param transform the transformation to apply
+     * @param <T>       the type of the value
+     * @param <R>       the type of the result
+     * @return the transformed value, or null if the input value was null
+     */
     @Nullable
     public static <T, R> R map(@Nullable T value, NullableFunction<T, R> transform)
     {
@@ -103,6 +133,16 @@ public class NullUtils
         return transform.apply(value);
     }
 
+    /**
+     * Applies a transformation to a value if it is not null, otherwise returns a default value
+     *
+     * @param value                the value to transform
+     * @param transform            the transformation to apply
+     * @param defaultValueSupplier the supplier for the default value
+     * @param <T>                  the type of the value
+     * @param <R>                  the type of the result
+     * @return the transformed value, or the default value if the input value was null
+     */
     public static <T, R> R map(@Nullable T value, Function<T, R> transform, Supplier<R> defaultValueSupplier)
     {
         if (value == null)
@@ -115,6 +155,14 @@ public class NullUtils
         }
     }
 
+    /**
+     * Returns the value of the specified type if it is not null, otherwise returns null
+     *
+     * @param type   the type to return
+     * @param object the value to return if it is not null
+     * @param <T>    the type to check
+     * @return the value with the correct type, or null if the value is null or not of the expected type
+     */
     @Nullable
     public static <T> T optionalValueOfType(Class<T> type, @Nullable Object object)
     {
@@ -128,15 +176,31 @@ public class NullUtils
         }
     }
 
+    /**
+     * Returns the value of the specified type if it is not null, otherwise returns the default value
+     *
+     * @param type         the type to return
+     * @param object       the value to return if it is not null
+     * @param defaultValue the default value to return if the value is null or not of the expected type
+     * @param <T>          the type to check
+     * @return the value with the correct type, or the default value if the value is null or not of the expected type
+     */
     public static <T> T valueOfType(Class<T> type, @Nullable Object object, T defaultValue)
     {
-        if (object != null && type.isInstance(object))
+        if (type.isInstance(object))
         {
             return type.cast(object);
         }
         return defaultValue;
     }
 
+    /**
+     * Returns the value of the specified type if it is not null, otherwise returns the default value
+     *
+     * @param object       the value to return if it is not null
+     * @param defaultValue the default value to return if the value is null or not of the expected type
+     * @return the value with the correct type, or the default value if the value is null or not of the expected type
+     */
     public static boolean safeBoolean(@Nullable Object object, boolean defaultValue)
     {
         boolean result;
@@ -157,6 +221,17 @@ public class NullUtils
         return result;
     }
 
+    /**
+     * Returns the value of the specified type if it is not null, otherwise throws an IllegalArgumentException
+     * with the provided error message
+     *
+     * @param type   the type to return
+     * @param object the value to return if it is not null
+     * @param error  the error message to use if the value is null or not of the expected type
+     * @param <T>    the type to check
+     * @return the value with the correct type
+     * @throws IllegalArgumentException when the value is null or not of the expected type
+     */
     public static <T> T valueOfTypeOrError(Class<T> type, @Nullable Object object, String error)
     {
         @Nullable T value = optionalValueOfType(type, object);

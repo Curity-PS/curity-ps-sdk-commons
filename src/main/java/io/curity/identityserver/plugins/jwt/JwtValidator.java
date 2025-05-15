@@ -2,10 +2,15 @@ package io.curity.identityserver.plugins.jwt;
 
 import java.util.Map;
 
+/**
+ * A simple interface for validating JWTs. The implementation should be able to validate a JWT using the configured key resolver.
+ * The JWT must contain a "sub" claim and the issuer and audience.
+ */
 public interface JwtValidator
 {
     /**
-     * Validates a JWT using the configured key resolver. The JWT must contain a "sub" claim and the issuer and audience
+     * Validates a JWT using the configured key resolver.
+     * The JWT must contain a "sub" claim and the issuer and audience
      *
      * @param jwt      to validate
      * @param issuer   String that has to match the `iss` claim of the JWT

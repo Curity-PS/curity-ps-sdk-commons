@@ -19,6 +19,11 @@ public final class ConfiguredKeyJwtValidator implements JwtValidator
 
     private static final Logger _logger = LoggerFactory.getLogger(ConfiguredKeyJwtValidator.class);
 
+    /**
+     * Constructor
+     *
+     * @param cryptoStore the asymmetric signature verification crypto store
+     */
     public ConfiguredKeyJwtValidator(AsymmetricSignatureVerificationCryptoStore cryptoStore)
     {
         _cryptoStore = cryptoStore;

@@ -26,6 +26,12 @@ public final class JwksUriJwtValidator implements JwtValidator
 
     private static final Logger _logger = LoggerFactory.getLogger(JwksUriJwtValidator.class);
 
+    /**
+     * Constructor
+     *
+     * @param jwksUri the URI to the JWKS. Will be cached, but updated if necessary
+     * @param httpClient the HTTP client to use for fetching the JWKS
+     */
     public JwksUriJwtValidator(URI jwksUri, HttpClient httpClient)
     {
         _httpsJwks = createJwksResolver(jwksUri, httpClient);

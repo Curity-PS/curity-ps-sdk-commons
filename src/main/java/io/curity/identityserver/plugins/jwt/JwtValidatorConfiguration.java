@@ -11,6 +11,10 @@ import se.curity.identityserver.sdk.service.crypto.AsymmetricSignatureVerificati
 import java.net.URI;
 import java.util.Optional;
 
+/**
+ * A configuration interface for JWT validation.
+ * Include in your Configuration to be able to use the JWT validator from the library.
+ */
 public interface JwtValidatorConfiguration extends Configuration
 {
     KeyResolverConfiguration getKeyResolverConfiguration();

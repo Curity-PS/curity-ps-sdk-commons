@@ -47,7 +47,15 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
+    withSourcesJar()
+    withJavadocJar()
 }
+
+tasks.javadoc {
+    exclude '**/*Configuration.java'
+    options.addBooleanOption("Xdoclint:all,-missing")
+}
+
 
 test {
     useJUnitPlatform()

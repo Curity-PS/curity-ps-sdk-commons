@@ -14,6 +14,8 @@ import java.util.Map;
 /**
  * A managed object for OpenID Discovery. Requires a {@link OpenIdDiscoveryConfiguration} with configuration of the metadata.
  * Also fetches the JWKS found in the metadata. Server configuration is config scoped
+ *
+ * @param <T> Configuration type for plugin
  */
 public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends ManagedObject<T>
 {
@@ -21,6 +23,12 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
     private final OpenIdDiscoveryConfiguration _openIdDiscoveryConfiguration;
     private final JwksUriJwtValidator _jwtValidator;
 
+    /**
+     * Main constructor for the managed object
+     *
+     * @param configuration                plugin config
+     * @param openIdDiscoveryConfiguration Configuration for the discovery fetcher
+     */
     public OpenIdDiscoveryManagedObject(T configuration, OpenIdDiscoveryConfiguration openIdDiscoveryConfiguration)
     {
         super(configuration);
@@ -38,6 +46,15 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
                 .body(HttpResponse.asJsonObject(_openIdDiscoveryConfiguration.getJson()));
     }
 
+    /**
+     * Get a configuration value of a specific type from the discovered provider metadata
+     *
+     * @param type the expected type of the value
+     * @param key  the key to look for in the provider metadata
+     * @param <C>  the expected type of the value
+     * @return the value of the expected type
+     * @throws IllegalArgumentException when the value is not found or is not of the expected type
+     */
     public <C> C getConfigurationValurOfType(Class<C> type, String key)
     {
         return NullUtils.valueOfTypeOrError(type, _discoveredConfiguration.get(key),
@@ -50,16 +67,31 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
                 "Did not find " + key + " in provider metadata");
     }
 
+    /**
+     * Get the token endpoint URI from the provider metadata
+     *
+     * @return the token endpoint URI
+     */
     public URI getTokenEndpoint()
     {
         return URI.create(getConfiguredString("token_endpoint"));
     }
 
+    /**
+     * Get the authorization endpoint URI from the provider metadata
+     *
+     * @return the authorization endpoint URI
+     */
     public URI getAuthorizeEndpoint()
     {
         return URI.create(getConfiguredString("authorization_endpoint"));
     }
 
+    /**
+     * Get the JWT validator, configured with the JWKS URI from the provider metadata
+     *
+     * @return the JWT validator
+     */
     public JwtValidator getJwtValidator()
     {
         return _jwtValidator;

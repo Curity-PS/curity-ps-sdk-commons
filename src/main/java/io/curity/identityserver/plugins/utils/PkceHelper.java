@@ -9,8 +9,21 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static org.jose4j.lang.HashUtil.SHA_256;
 import static org.jose4j.lang.HashUtil.getMessageDigest;
 
+/**
+ * Utility class for PKCE (Proof Key for Code Exchange) related operations.
+ */
 public final class PkceHelper
 {
+    private PkceHelper()
+    {
+    }
+
+    /**
+     * Generates a code challenge from the provided code verifier using SHA-256 hashing.
+     *
+     * @param codeVerifier the code verifier
+     * @return the code challenge
+     */
     public static String challengeFromVerifier(String codeVerifier)
     {
         MessageDigest messageDigest = getMessageDigest(SHA_256);
@@ -19,6 +32,11 @@ public final class PkceHelper
         return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
     }
 
+    /**
+     * Generates a code verifier using a secure random number generator.
+     *
+     * @return the code verifier
+     */
     public static String generateCodeVerifier()
     {
         int codeVerifierLength = 128;
