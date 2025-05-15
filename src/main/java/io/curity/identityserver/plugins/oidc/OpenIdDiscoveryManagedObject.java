@@ -38,6 +38,12 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
                 .body(HttpResponse.asJsonObject(_openIdDiscoveryConfiguration.getJson()));
     }
 
+    public <C> C getConfigurationValurOfType(Class<C> type, String key)
+    {
+        return NullUtils.valueOfTypeOrError(type, _discoveredConfiguration.get(key),
+                "Did not find " + key + " of type" + type.toString() + " in provider metadata");
+    }
+
     private String getConfiguredString(String key)
     {
         return NullUtils.valueOfTypeOrError(String.class, _discoveredConfiguration.get(key),
