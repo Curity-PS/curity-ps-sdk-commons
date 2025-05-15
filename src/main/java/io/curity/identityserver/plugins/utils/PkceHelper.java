@@ -14,6 +14,8 @@ import static org.jose4j.lang.HashUtil.getMessageDigest;
  */
 public final class PkceHelper
 {
+    private static final char[] ALLOWED_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGJKLMNPRSTUVWXYZ0123456789.-_~".toCharArray();
+
     private PkceHelper()
     {
     }
@@ -40,14 +42,13 @@ public final class PkceHelper
     public static String generateCodeVerifier()
     {
         int codeVerifierLength = 128;
-        char[] allAllowed = "abcdefghijklmnopqrstuvwxyzABCDEFGJKLMNPRSTUVWXYZ0123456789.-_~".toCharArray();
-        int allAllowedLength = allAllowed.length;
+        int allAllowedLength = ALLOWED_CHARACTERS.length;
         Random random = new SecureRandom();
         StringBuilder codeVerifier = new StringBuilder();
 
         for (int i = 0; i < codeVerifierLength; i++)
         {
-            codeVerifier.append(allAllowed[random.nextInt(allAllowedLength)]);
+            codeVerifier.append(ALLOWED_CHARACTERS[random.nextInt(allAllowedLength)]);
         }
 
         return codeVerifier.toString();
