@@ -1,6 +1,7 @@
 package io.curity.identityserver.plugins.jwt;
 
-import java.util.Map;
+import io.curity.identityserver.plugins.attributes.ValidatedJwtAttributes;
+
 import java.util.Set;
 
 /**
@@ -18,13 +19,13 @@ public interface JwtValidator
      * @param audience String that has to be in the `aud` claim of the JWT
      * @return Map of claims in the JWT
      */
-    default Map<String, Object> validateJwt(String jwt, String issuer, String audience) throws JwtValidationException {
+    default ValidatedJwtAttributes validateJwt(String jwt, String issuer, String audience) throws JwtValidationException {
         return validateJwt(jwt, issuer, audience, Set.of());
     }
 
 
-    Map<String, Object> validateJwt(String jwt,
-                                    String issuer,
-                                    String audience,
-                                    Set<String> excludeClaims) throws JwtValidationException;
+    ValidatedJwtAttributes validateJwt(String jwt,
+                                       String issuer,
+                                       String audience,
+                                       Set<String> excludeClaims) throws JwtValidationException;
 }

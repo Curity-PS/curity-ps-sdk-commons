@@ -1,5 +1,6 @@
 package io.curity.identityserver.plugins.jwt;
 
+import io.curity.identityserver.plugins.attributes.ValidatedJwtAttributes;
 import org.jose4j.jwk.HttpsJwks;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.JwtConsumer;
@@ -12,7 +13,6 @@ import se.curity.identityserver.sdk.service.HttpClient;
 
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -39,12 +39,12 @@ public final class JwksUriJwtValidator implements JwtValidator
     }
 
     @Override
-    public Map<String, Object> validateJwt(String jwt, String issuer, String audience, Set<String> excludeClaims) throws JwtValidationException
+    public ValidatedJwtAttributes validateJwt(String jwt, String issuer, String audience, Set<String> excludeClaims) throws JwtValidationException
     {
         try
         {
             var claims = createJwtConsumer(issuer, audience).processToClaims(jwt);
-            return claims.getClaimsMap(excludeClaims);
+            return ValidatedJwtAttributes.fromMap(claims.getClaimsMap(excludeClaims));
         }
         catch (InvalidJwtException e)
         {

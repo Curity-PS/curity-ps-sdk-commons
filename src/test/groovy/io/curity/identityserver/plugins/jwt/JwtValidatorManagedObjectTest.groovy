@@ -150,7 +150,7 @@ class JwtValidatorManagedObjectTest extends Specification {
         def validatedClaims = jwtValidator.validateJwt(validJwt, "test-issuer", "test-audience", Set.of("sub"))
 
         then:
-        validatedClaims.sub == null
+        validatedClaims.subject == null
         validatedClaims.scope == "read"
 
         where:
