@@ -53,9 +53,7 @@ jobs:
 
       - name: Fetch release version from tags
         run: |
-          VERSION=$(git tag -l | head -n 1)
-          echo "Current Version: $VERSION"
-          echo "CURRENT_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "CURRENT_VERSION=$(git tag -l | head -n 1)" >> $GITHUB_ENV
 
       - name: Conventional changelog action
         id: changelog
@@ -63,9 +61,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           skip-on-empty: "false"
-          skip-tag: "true"
-          skip-commit: 'true'
+          skip-commit: "true"
           output-file: false
+          skip-version-file: "true"
+          skip-git-pull: "true"
           fallback-version: ${{ env.CURRENT_VERSION }}
 
       - name: Fetch new version
@@ -102,16 +101,8 @@ jobs:
           asset_path: ./plugin-artifacts.zip
           asset_name: plugin-artifacts.zip
           asset_content_type: application/zip
+
       - name: Publish package
         run: ./gradlew publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update version in build.gradle
-        run: |
-          sed -i "s/^version *= *.*/version = '$NEW_VERSION'/" build.gradle
-
-      - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v6
-        with:
-          commit_message: "chore: Update version to ${{ env.NEW_VERSION }}"
