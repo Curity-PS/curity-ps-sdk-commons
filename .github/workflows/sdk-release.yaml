@@ -51,10 +51,11 @@ jobs:
       - name: Download code
         uses: actions/checkout@v3
 
-      - name: Fetch release version from build gradle file
+      - name: Fetch release version from tags
         run: |
-          echo "CURRENT_VERSION=$(./gradlew properties | grep "version:" | awk '{print $2}')" >> $GITHUB_ENV
-          echo "Current Version: ${{ env.CURRENT_VERSION }}"
+          VERSION=$(./it tag -l | head -n 1')
+          echo "Current Version: $VERSION"
+          echo "CURRENT_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Conventional changelog action
         id: changelog
@@ -64,11 +65,14 @@ jobs:
           skip-on-empty: "false"
           skip-tag: "true"
           skip-commit: 'true'
+          output-file: false
           fallback-version: ${{ env.CURRENT_VERSION }}
 
-      - name: Update version in build.gradle
+      - name: Fetch new version
         run: |
-          sed -i "s/^version *= *.*/version = '${{ steps.changelog.outputs.version }}'/" build.gradle
+          NEW_VERSION=${{ steps.changelog.outputs.version }}
+          echo "Creating new version: $NEW_VERSION"
+          echo NEW_VERSION=$NEW_VERSION >> $GITHUB_ENV
 
       - name: Download plugin artifacts
         uses: actions/download-artifact@v4
@@ -82,8 +86,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.RELEASE_VERSION }}
-          release_name: ${{ env.RELEASE_VERSION }}
+          tag_name: ${{ env.NEW_VERSION }}
+          release_name: ${{ env.NEW_VERSION }}
           body: ${{ steps.changelog.outputs.clean_changelog }}
           draft: false
           prerelease: false
@@ -103,7 +107,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Update version in build.gradle
+        run: |
+          sed -i "s/^version *= *.*/version = '$NEW_VERSION'/" build.gradle
+
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v6
         with:
-          commit_message: "choir: Update version to ${{ env.RELEASE_VERSION }}"
+          commit_message: "chore: Update version to ${{ env.NEW_VERSION }}"
