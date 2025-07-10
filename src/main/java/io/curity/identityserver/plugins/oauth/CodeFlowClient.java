@@ -3,6 +3,7 @@ package io.curity.identityserver.plugins.oauth;
 import io.curity.identityserver.plugins.utils.PkceHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.curity.identityserver.sdk.Nullable;
 import se.curity.identityserver.sdk.attribute.Attribute;
 import se.curity.identityserver.sdk.errors.ErrorCode;
 import se.curity.identityserver.sdk.http.HttpMethod;
@@ -71,7 +72,8 @@ public final class CodeFlowClient
         queryParameters.put("state", Collections.singletonList(state));
         _sessionManager.put(Attribute.of("state", state));
 
-        if(_config.getScope().contains("openid")) {
+        if (_config.getScope().contains("openid"))
+        {
             String nonce = UUID.randomUUID().toString();
             queryParameters.put("nonce", Collections.singletonList(nonce));
             _sessionManager.put(Attribute.of("nonce", nonce));
@@ -106,11 +108,32 @@ public final class CodeFlowClient
     }
 
     /**
+     * Validates that the state provided in the callback matches the state stored in the session.
+     *
+     * @param state provided in callback
+     * @return true if the state matches the session state, otherwise false
+     */
+    public boolean validateState(String state)
+    {
+        @Nullable Attribute sessionAttribute = _sessionManager.get("state");
+
+        if (sessionAttribute != null && state.equals(sessionAttribute.getOptionalValueOfType(String.class)))
+        {
+            _logger.trace("State matches session");
+            return true;
+        }
+        else
+        {
+            _logger.debug("State did not match session");
+            return false;
+        }
+    }
+
+    /**
      * Redeems the authorization code for tokens
      * The response will be validated as successful if the status code is 200
      *
      * @param code the authorization code from the AS
-     *
      * @return TokenResponseAttributes object containing the access token, id token and refresh token if present
      */
     public TokenResponseAttributes redeemCodeForTokens(String code)
@@ -147,7 +170,8 @@ public final class CodeFlowClient
                 "redirect_uri", callbackUri
         ));
 
-        if(_config.usePkce()) {
+        if (_config.usePkce())
+        {
             String codeVerifier = _sessionManager.remove("code_verifier").getValueOfType(String.class);
             postData.put("code_verifier", codeVerifier);
         }

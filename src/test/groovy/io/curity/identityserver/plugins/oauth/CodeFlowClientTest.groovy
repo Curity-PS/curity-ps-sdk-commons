@@ -149,6 +149,26 @@ class CodeFlowClientTest extends Specification {
         usePkce << [true, false]
     }
 
+    def "Test that the client can validate a state parameter against its session"() {
+        given: "A mocked configuration that captures the parameters in the redirect exception"
+        def capturedParameters = [:]
+        def mockedExceptionFactory = createMockedExceptionFactory(capturedParameters)
+        def sessionManager = new TestSessionManager()
+        def mockConfiguration = mockedConfiguration("read", true, mockedExceptionFactory, sessionManager)
+
+        def client = new CodeFlowClient(mockConfiguration,
+                URI.create(AUTHZ_ENDPOINT), null, null)
+
+        when: "Creating the redirectException"
+        client.createAuthorizationUrlRedirect([:])
+
+        then: "The state parameter is captured and can be validated against the session"
+        client.validateState(capturedParameters["state"]?.first() as String)
+
+        and: "An invalid state parameter cannot be validated"
+        !client.validateState("my-invalid-state")
+    }
+
     private ExceptionFactory createMockedExceptionFactory(Map outParameters) {
         def mockedExceptionFactory = Mock(ExceptionFactory) {
             redirectException(_, _, { params ->
