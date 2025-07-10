@@ -53,7 +53,7 @@ jobs:
 
       - name: Fetch release version from tags
         run: |
-          VERSION=$(./it tag -l | head -n 1')
+          VERSION=$(git tag -l | head -n 1)
           echo "Current Version: $VERSION"
           echo "CURRENT_VERSION=$VERSION" >> $GITHUB_ENV
 
