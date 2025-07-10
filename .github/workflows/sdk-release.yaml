@@ -57,7 +57,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           skip-on-empty: "false"
-          skip-tag: "true"j
+          skip-tag: "true"
           fallback-version: "0.1.0"
 
       - name: Update version in build.gradle
