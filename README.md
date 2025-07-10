@@ -1,4 +1,5 @@
 # curity-sdk-commons
+[![Quality](https://img.shields.io/badge/quality-demo-red)](https://curity.io/resources/code-examples/status/)
 
 Curity SDK Commons, a package of Java utility classes for the Curity Identity Server plugin development
 
@@ -6,6 +7,8 @@ This package is private for the time being, when we are ready we can make it pub
 
 The release action for this github project creates a package in the maven repo, which can be used with authentication.
 But easier to build it locally as long as its private.
+
+This is ongoing development, and is not yet ready for production use. The library is not supported by Curity Professional Services.
 
 ## Build
 
