@@ -72,6 +72,26 @@ public class NullUtils
     }
 
     /**
+     * Returns the value if it is not null, otherwise returns the default value
+     *
+     * @param value        the value to null check
+     * @param defaultValue the default value to return if the value is null
+     * @param <T>          the type of the value
+     * @return the value if it is not null, otherwise the default value
+     */
+    public static <T> T valueOrDefault(@Nullable T value, T defaultValue)
+    {
+        if (value != null)
+        {
+            return value;
+        }
+        else
+        {
+            return defaultValue;
+        }
+    }
+
+    /**
      * Perform an operation on a value if it is not null
      *
      * @param value    that will be passed to the consumer if it is not null

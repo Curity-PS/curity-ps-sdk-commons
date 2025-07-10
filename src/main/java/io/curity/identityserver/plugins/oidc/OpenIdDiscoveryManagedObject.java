@@ -96,4 +96,14 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
     {
         return _jwtValidator;
     }
+
+    /**
+     * Get the HttpClient configured for OpenID Discovery
+     *
+     * @return HttpClient
+     */
+    public HttpClient getHttpClient()
+    {
+        return _openIdDiscoveryConfiguration.getHttpClient();
+    }
 }
