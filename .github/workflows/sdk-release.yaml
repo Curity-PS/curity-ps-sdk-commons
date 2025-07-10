@@ -51,6 +51,11 @@ jobs:
       - name: Download code
         uses: actions/checkout@v3
 
+      - name: Fetch release version from build gradle file
+        run: |
+          echo "CURRENT_VERSION=$(./gradlew properties | grep "version:" | awk '{print $2}')" >> $GITHUB_ENV
+          echo "Current Version: ${{ env.CURRENT_VERSION }}"
+
       - name: Conventional changelog action
         id: changelog
         uses: TriPSs/conventional-changelog-action@v5
@@ -58,15 +63,12 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           skip-on-empty: "false"
           skip-tag: "true"
-          fallback-version: "0.2.1"
+          skip-commit: 'true'
+          fallback-version: ${{ env.CURRENT_VERSION }}
 
       - name: Update version in build.gradle
         run: |
           sed -i "s/^version *= *.*/version = '${{ steps.changelog.outputs.version }}'/" build.gradle
-
-      - name: Fetch release version from build gradle file
-        run: |
-          echo "RELEASE_VERSION=$(./gradlew properties | grep "version:" | awk '{print $2}')" >> $GITHUB_ENV
 
       - name: Download plugin artifacts
         uses: actions/download-artifact@v4
@@ -100,3 +102,8 @@ jobs:
         run: ./gradlew publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v6
+        with:
+          commit_message: "choir: Update version to ${{ env.RELEASE_VERSION }}"
