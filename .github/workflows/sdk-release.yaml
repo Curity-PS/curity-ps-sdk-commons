@@ -60,8 +60,9 @@ jobs:
         uses: TriPSs/conventional-changelog-action@v5
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          skip-on-empty: "false"
+          skip-on-empty: "true"
           skip-commit: "true"
+          tag-prefix: ''
           output-file: false
           skip-version-file: "true"
           skip-git-pull: "true"
