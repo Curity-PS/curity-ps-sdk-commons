@@ -26,21 +26,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build with Gradle Wrapper
-        run: ./gradlew build
+      - name: Compile with Gradle Wrapper
+        run: ./gradlew assemble
 
-      - name: Copy plugin jars
-        run: mkdir staging && cp build/libs/*.jar staging
-
-      - name: Build plugin artifacts zip
-        run: |
-          zip --junk-paths plugin-artifacts staging/*
-
-      - name: Upload plugin artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: plugin-artifacts.zip
-          path: plugin-artifacts.zip
+      - name: Run unit tests
+        run: ./gradlew test
 
   make_release:
     runs-on: ubuntu-latest
@@ -49,7 +39,9 @@ jobs:
 
     steps:
       - name: Download code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Conventional changelog action
         id: changelog
@@ -71,11 +63,8 @@ jobs:
           echo "Creating new version: $NEW_VERSION"
           echo NEW_VERSION=$NEW_VERSION >> $GITHUB_ENV
 
-      - name: Download plugin artifacts
-        if: ${{ steps.changelog.outputs.skipped == 'false' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: plugin-artifacts.zip
+      - name: Create plugin jar
+        run: ./gradlew jar
 
       - name: Create release
         id: create_release
@@ -98,8 +87,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./plugin-artifacts.zip
-          asset_name: plugin-artifacts.zip
+          asset_path: ./build/libs/*.jar
+          asset_name: plugin-release-{{ env.NEW_VERSION }}.jar
           asset_content_type: application/zip
 
       - name: Publish package
