@@ -43,6 +43,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Print git log
+        run: PAGER= git log --oneline --decorate
+
       - name: Conventional changelog action
         id: changelog
         uses: TriPSs/conventional-changelog-action@v5
