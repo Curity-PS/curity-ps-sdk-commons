@@ -7,6 +7,7 @@ import se.curity.identityserver.sdk.config.Configuration;
 import se.curity.identityserver.sdk.http.HttpResponse;
 import se.curity.identityserver.sdk.plugin.ManagedObject;
 import se.curity.identityserver.sdk.service.HttpClient;
+import se.curity.identityserver.sdk.service.WebServiceClient;
 
 import java.net.URI;
 import java.util.Map;
@@ -85,6 +86,30 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
     public URI getAuthorizeEndpoint()
     {
         return URI.create(getConfiguredString("authorization_endpoint"));
+    }
+
+    /**
+     * Get the backchannel authentication endpoint URI from the provider metadata
+     *
+     * @return the backchannel authentication endpoint URI
+     */
+    public URI getBackChannelAuthenticationEndpoint()
+    {
+        return URI.create(getConfiguredString("backchannel_authentication_endpoint"));
+    }
+
+    /**
+     * Create a webservice client for the given URI, configured with the HttpClient from the OpenID Discovery configuration
+     *
+     * @param uri the URI to create the webservice client for
+     * @return the webservice client
+     */
+    public WebServiceClient getWebserviceClientFor(URI uri)
+    {
+        return _openIdDiscoveryConfiguration.webserviceClientFactory()
+                .create(_openIdDiscoveryConfiguration.getHttpClient())
+                .withHost(uri.getHost())
+                .withPath(uri.getPath());
     }
 
     /**

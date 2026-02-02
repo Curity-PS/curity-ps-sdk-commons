@@ -4,6 +4,7 @@ import se.curity.identityserver.sdk.config.Configuration;
 import se.curity.identityserver.sdk.config.annotation.Description;
 import se.curity.identityserver.sdk.service.HttpClient;
 import se.curity.identityserver.sdk.service.Json;
+import se.curity.identityserver.sdk.service.WebServiceClientFactory;
 
 import java.net.URI;
 
@@ -16,4 +17,6 @@ public interface OpenIdDiscoveryConfiguration extends Configuration
     HttpClient getHttpClient();
 
     Json getJson();
+
+    WebServiceClientFactory webserviceClientFactory();
 }
