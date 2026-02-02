@@ -56,7 +56,7 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
      * @return the value of the expected type
      * @throws IllegalArgumentException when the value is not found or is not of the expected type
      */
-    public <C> C getConfigurationValurOfType(Class<C> type, String key)
+    public <C> C getConfigurationValueOfType(Class<C> type, String key)
     {
         return NullUtils.valueOfTypeOrError(type, _discoveredConfiguration.get(key),
                 "Did not find " + key + " of type" + type.toString() + " in provider metadata");

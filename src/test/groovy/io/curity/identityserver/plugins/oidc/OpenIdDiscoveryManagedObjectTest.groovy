@@ -43,7 +43,7 @@ class OpenIdDiscoveryManagedObjectTest extends Specification {
         def managedObject = new OpenIdDiscoveryManagedObject(Mock(Configuration), openIdDiscoveryConfiguration)
 
         when:
-        def value = managedObject.getConfigurationValurOfType(type, key)
+        def value = managedObject.getConfigurationValueOfType(type, key)
 
         then:
         value == expectedValue
