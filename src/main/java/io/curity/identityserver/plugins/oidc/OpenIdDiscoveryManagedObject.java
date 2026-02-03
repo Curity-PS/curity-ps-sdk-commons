@@ -41,7 +41,7 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
 
     private Map<String, Object> fetchProviderConfiguration(URI issuer, HttpClient httpClient)
     {
-        return httpClient.request(issuer.resolve(".well-known/openid-configuration"))
+        return httpClient.request(issuer.resolve("/.well-known/openid-configuration"))
                 .get()
                 .response()
                 .body(HttpResponse.asJsonObject(_openIdDiscoveryConfiguration.getJson()));

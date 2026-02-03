@@ -60,7 +60,7 @@ class OpenIdDiscoveryManagedObjectTest extends Specification {
             1 * getIssuer() >> issuerUri
             1 * getJson() >> new TestJson()
             1 * getHttpClient() >>
-                    mockedHttpClientResponseForUri(issuerUri.resolve('.well-known/openid-configuration'),
+                    mockedHttpClientResponseForUri(issuerUri.resolve('/.well-known/openid-configuration'),
                             discoveryMetadataMap)
         }
     }
