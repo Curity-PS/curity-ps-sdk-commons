@@ -3,11 +3,11 @@ package io.curity.identityserver.plugins.oidc;
 import io.curity.identityserver.plugins.jwt.JwksUriJwtValidator;
 import io.curity.identityserver.plugins.jwt.JwtValidator;
 import io.curity.identityserver.plugins.utils.NullUtils;
+import io.curity.identityserver.plugins.utils.UriHelper;
 import se.curity.identityserver.sdk.config.Configuration;
 import se.curity.identityserver.sdk.http.HttpResponse;
 import se.curity.identityserver.sdk.plugin.ManagedObject;
 import se.curity.identityserver.sdk.service.HttpClient;
-import se.curity.identityserver.sdk.service.WebServiceClient;
 
 import java.net.URI;
 import java.util.Map;
@@ -41,7 +41,7 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
 
     private Map<String, Object> fetchProviderConfiguration(URI issuer, HttpClient httpClient)
     {
-        return httpClient.request(issuer.resolve("/.well-known/openid-configuration"))
+        return httpClient.request(UriHelper.appendPath(issuer, "/.well-known/openid-configuration"))
                 .get()
                 .response()
                 .body(HttpResponse.asJsonObject(_openIdDiscoveryConfiguration.getJson()));
@@ -96,20 +96,6 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
     public URI getBackChannelAuthenticationEndpoint()
     {
         return URI.create(getConfiguredString("backchannel_authentication_endpoint"));
-    }
-
-    /**
-     * Create a webservice client for the given URI, configured with the HttpClient from the OpenID Discovery configuration
-     *
-     * @param uri the URI to create the webservice client for
-     * @return the webservice client
-     */
-    public WebServiceClient getWebserviceClientFor(URI uri)
-    {
-        return _openIdDiscoveryConfiguration.webserviceClientFactory()
-                .create(_openIdDiscoveryConfiguration.getHttpClient())
-                .withHost(uri.getHost())
-                .withPath(uri.getPath());
     }
 
     /**
