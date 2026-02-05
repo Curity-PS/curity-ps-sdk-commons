@@ -11,25 +11,6 @@ repositories {
     mavenCentral()
 }
 
-publishing {
-    repositories {
-        maven {
-            name = "CurityPsPackages"
-            url = "https://maven.pkg.github.com/curity-ps/curity-ps-sdk-commons"
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
-            }
-        }
-    }
-
-    publications {
-        gpr(MavenPublication) {
-            from(components.java)
-        }
-    }
-}
-
 dependencies {
     compileOnly 'se.curity.identityserver:identityserver.sdk:10.2.0'
     compileOnly 'org.slf4j:slf4j-api:2.0.12'
@@ -64,8 +45,20 @@ tasks.register('testJar', Jar) {
 }
 
 publishing {
+    repositories {
+        maven {
+            name = "CurityPsPackages"
+            url = "https://maven.pkg.github.com/curity-ps/curity-ps-sdk-commons"
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+
     publications {
-        gpr {
+        gpr(MavenPublication) {
+            from(components.java)
             artifact(tasks.testJar)
         }
     }
