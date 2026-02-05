@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'io.curity'
-version = '0.1.0'
+version = '0.4.0'
 
 repositories {
     mavenCentral()
@@ -41,6 +41,8 @@ dependencies {
     testImplementation 'se.curity.identityserver:identityserver.sdk:10.2.0'
     testImplementation 'org.spockframework:spock-core:2.4-M4-groovy-4.0'
     testImplementation 'org.bitbucket.b_c:jose4j:0.9.6'
+    testImplementation 'org.testcontainers:testcontainers:2.0.3'
+    testImplementation 'org.slf4j:slf4j-api:2.0.12'
 }
 
 java {
@@ -55,6 +57,19 @@ tasks.javadoc {
     exclude '**/*Configuration.java'
 }
 
+
+tasks.register('testJar', Jar) {
+    archiveClassifier = 'tests'
+    from sourceSets.test.output
+}
+
+publishing {
+    publications {
+        gpr {
+            artifact(tasks.testJar)
+        }
+    }
+}
 
 test {
     useJUnitPlatform()
