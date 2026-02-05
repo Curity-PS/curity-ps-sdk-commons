@@ -22,10 +22,9 @@ import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.slf4j.LoggerFactory
 
-import java.nio.file.Files
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.StandardCopyOption
 import java.time.Duration
 
 /**
@@ -158,9 +157,9 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
     }
 
     /**
-     * Extract the bundled base-config.xml from the classpath into a temporary file.
+     * Read the bundled base-config.xml from the classpath as a string.
      */
-    private static Path extractBaseConfig() {
+    private static String readBaseConfig() {
         def resource = CurityServerContainer.class.getClassLoader().getResourceAsStream(BASE_CONFIG_RESOURCE)
         if (resource == null) {
             throw new IllegalStateException(
@@ -169,12 +168,9 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
             )
         }
 
-        def tempFile = Files.createTempFile("curity-base-config-", ".xml")
-        tempFile.toFile().deleteOnExit()
         resource.withCloseable { input ->
-            Files.copy(input, tempFile, StandardCopyOption.REPLACE_EXISTING)
+            new String(input.readAllBytes(), StandardCharsets.UTF_8)
         }
-        return tempFile
     }
 
     /**
