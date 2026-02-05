@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'io.curity'
-version = '0.4.0'
+version = project.hasProperty('version') ? project.property('version') : '0.1.0'
 
 repositories {
     mavenCentral()
