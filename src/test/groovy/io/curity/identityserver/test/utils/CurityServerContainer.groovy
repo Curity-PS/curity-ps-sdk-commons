@@ -16,17 +16,17 @@
 
 package io.curity.identityserver.test.utils
 
+
+import org.slf4j.LoggerFactory
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.images.builder.ImageFromDockerfile
-import org.slf4j.LoggerFactory
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Duration
-
 /**
  * Testcontainer for Curity Identity Server with plugin pre-installed.
  *
@@ -43,6 +43,10 @@ import java.time.Duration
  *
  * <h3>Usage</h3>
  * <pre>
+ * // Base configuration only – no plugin
+ * def container = new CurityServerContainer()
+ * container.start()
+ *
  * // Plugin folder only – uses base-config.xml from the library
  * def container = new CurityServerContainer("build/my-plugin")
  *
@@ -64,6 +68,14 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
     private static final int RUNTIME_PORT = 8443
     private static final String DEFAULT_BASE_IMAGE = "curity.azurecr.io/curity/idsvr:latest"
     private static final String BASE_CONFIG_RESOURCE = "base-config.xml"
+
+    /**
+     * Create a new Curity Server container with only the base configuration.
+     * No plugin or extra configuration is included.
+     */
+    CurityServerContainer() {
+        this(null as Path, null as Path, DEFAULT_BASE_IMAGE)
+    }
 
     /**
      * Create a new Curity Server container with only a plugin folder.
@@ -109,8 +121,13 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
 
         withExposedPorts(ADMIN_PORT, RUNTIME_PORT)
 
-        // Pass the license key into the container for config parameterization
-        withEnv("LICENSE_KEY", System.getenv("LICENSE_KEY"))
+        // Pass the license key into the container for config parameterization (if set)
+        def licenseKey = System.getenv("LICENSE_KEY")
+        if (licenseKey != null) {
+            withEnv("LICENSE_KEY", "<license-key>$licenseKey</license-key>")
+        } else {
+            withEnv("LICENSE_KEY", "")
+        }
 
         // Stream container logs to test output
         withLogConsumer(new Slf4jLogConsumer(logger).withSeparateOutputStreams())
@@ -128,8 +145,8 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
      * Build the Docker image with plugin and configuration.
      */
     private static ImageFromDockerfile buildImage(Path extraConfigXml, Path pluginFolder, String baseImage) {
-        def folderName = pluginFolder.getName(pluginFolder.nameCount - 1)
-        def baseConfigTemp = extractBaseConfig()
+        def baseConfigContent = readBaseConfig()
+        def baseConfigTemp = createTempFile(baseConfigContent, "base-config", ".xml")
 
         def image = new ImageFromDockerfile()
                 .withDockerfileFromBuilder { builder ->
@@ -140,20 +157,37 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
                         b.copy("extra-config.xml", "/opt/idsvr/etc/init/extra-config.xml")
                     }
 
-                    b.copy("plugin-release/", "/opt/idsvr/usr/share/plugins/$folderName")
-                            .env("LOGGING_LEVEL", "DEBUG")
+                    if (pluginFolder != null) {
+                        def folderName = pluginFolder.getName(pluginFolder.nameCount - 1)
+                        b.copy("plugin-release/", "/opt/idsvr/usr/share/plugins/$folderName")
+                    }
+
+                    b.env("LOGGING_LEVEL", "DEBUG")
                             .env("SERVICE_ROLE", "default")
                             .env("ADMIN", "true")
                             .build()
                 }
                 .withFileFromPath("base-config.xml", baseConfigTemp)
-                .withFileFromPath("plugin-release", pluginFolder)
+
+        if (pluginFolder != null) {
+            image.withFileFromPath("plugin-release", pluginFolder)
+        }
 
         if (extraConfigXml != null) {
             image.withFileFromPath("extra-config.xml", extraConfigXml)
         }
 
         return image
+    }
+
+    /**
+     * Create a temporary file with the given content.
+     */
+    private static Path createTempFile(String content, String prefix, String suffix) {
+        def tempFile = File.createTempFile(prefix, suffix)
+        tempFile.deleteOnExit()
+        tempFile.write(content, StandardCharsets.UTF_8.name())
+        return tempFile.toPath()
     }
 
     /**

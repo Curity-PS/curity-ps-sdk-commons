@@ -78,6 +78,7 @@
     <profile>
       <id>token-service</id>
       <type xmlns:as="https://curity.se/ns/conf/profile/oauth">as:oauth-service</type>
+      <expose-detailed-error-messages/>
       <settings>
         <authorization-server xmlns="https://curity.se/ns/conf/profile/oauth">
           <authentication-service>
@@ -395,7 +396,7 @@
     </caching-services>
   </facilities>
   <processing xmlns="https://curity.se/ns/conf/base">
-    <license-key>#{LICENSE_KEY}</license-key>
+    #{LICENSE_KEY}
     <account-managers>
       <account-manager>
         <id>default-account-manager</id>
