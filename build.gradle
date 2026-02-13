@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'groovy'
     id 'maven-publish'
+    id "io.curity.gradle.curity-plugin-dev" version "0.3.0"
 }
 
 group = 'io.curity'
@@ -12,14 +13,14 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'se.curity.identityserver:identityserver.sdk:10.2.0'
+    compileOnly 'se.curity.identityserver:identityserver.sdk:11.0.0'
     compileOnly 'org.slf4j:slf4j-api:2.0.12'
 
     api('org.bitbucket.b_c:jose4j:0.9.6') {
         exclude group: 'org.slf4j', module: 'slf4j-api'
     }
 
-    testImplementation 'se.curity.identityserver:identityserver.sdk:10.2.0'
+    testImplementation 'se.curity.identityserver:identityserver.sdk:11.0.0'
     testImplementation 'org.spockframework:spock-core:2.4-M4-groovy-4.0'
     testImplementation 'org.bitbucket.b_c:jose4j:0.9.6'
     testImplementation 'org.testcontainers:testcontainers:2.0.3'
