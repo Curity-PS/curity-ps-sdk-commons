@@ -20,7 +20,6 @@ package io.curity.identityserver.test.utils
 import org.slf4j.LoggerFactory
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.Slf4jLogConsumer
-import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.images.builder.ImageFromDockerfile
 
 import java.nio.charset.StandardCharsets
@@ -43,17 +42,27 @@ import java.time.Duration
  *
  * <h3>Usage</h3>
  * <pre>
- * // Base configuration only – no plugin
+ * // Base configuration only – no plugin, latest image
  * def container = new CurityServerContainer()
  * container.start()
  *
- * // Plugin folder only – uses base-config.xml from the library
+ * // Plugin folder only – uses base-config.xml from the library, latest image
  * def container = new CurityServerContainer("build/my-plugin")
  *
- * // Plugin folder + additional config overlay
+ * // Plugin folder only – specific version
+ * def container = new CurityServerContainer("build/my-plugin", "2025.1.0")
+ *
+ * // Plugin folder + additional config overlay, latest image
  * def container = new CurityServerContainer(
  *     "src/test/resources/my-plugin-config.xml",
  *     "build/my-plugin"
+ * )
+ *
+ * // Plugin folder + additional config overlay + specific version
+ * def container = new CurityServerContainer(
+ *     "src/test/resources/my-plugin-config.xml",
+ *     "build/my-plugin",
+ *     "2025.1.0"
  * )
  * container.start()
  *
@@ -66,15 +75,31 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
     private static final def logger = LoggerFactory.getLogger(CurityServerContainer.class)
     private static final int ADMIN_PORT = 6749
     private static final int RUNTIME_PORT = 8443
-    private static final String DEFAULT_BASE_IMAGE = "curity.azurecr.io/curity/idsvr:latest"
+    private static final int STATUS_PORT = 4465
+    private static final String BASE_IMAGE_REPOSITORY = "curity.azurecr.io/curity/idsvr"
+    private static final String DEFAULT_BASE_IMAGE = "$BASE_IMAGE_REPOSITORY:latest"
     private static final String BASE_CONFIG_RESOURCE = "base-config.xml"
+
+    private static String imageForVersion(String version) {
+        version ? "$BASE_IMAGE_REPOSITORY:$version" : DEFAULT_BASE_IMAGE
+    }
 
     /**
      * Create a new Curity Server container with only the base configuration.
      * No plugin or extra configuration is included.
      */
     CurityServerContainer() {
-        this(null as Path, null as Path, DEFAULT_BASE_IMAGE)
+        this(null as Path, null as Path, null as String)
+    }
+
+    /**
+     * Create a new Curity Server container with only the base configuration.
+     * No plugin or extra configuration is included.
+     * @param version          Curity Identity Server version tag (e.g. {@code "11.0"}).
+     *                         If {@code null} or omitted, {@code latest} is used.
+     */
+    CurityServerContainer(String version) {
+        this(null as Path, null as Path, version)
     }
 
     /**
@@ -82,9 +107,11 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
      * Uses the bundled base-config.xml.
      *
      * @param pluginFolderPath Path to the plugin release folder
+     * @param version          Curity Identity Server version tag (e.g. {@code "11.0"}).
+     *                         If {@code null} or omitted, {@code latest} is used.
      */
-    CurityServerContainer(String pluginFolderPath) {
-        this(null as Path, Paths.get(pluginFolderPath), DEFAULT_BASE_IMAGE)
+    CurityServerContainer(String pluginFolderPath, String version) {
+        this(null as Path, Paths.get(pluginFolderPath), version)
     }
 
     /**
@@ -92,21 +119,11 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
      *
      * @param extraConfigXmlPath Path to an additional configuration XML file
      * @param pluginFolderPath   Path to the plugin release folder
+     * @param version            Curity Identity Server version tag (e.g. {@code "11.0"}).
+     *                           If {@code null} or omitted, {@code latest} is used.
      */
-    CurityServerContainer(String extraConfigXmlPath, String pluginFolderPath) {
-        this(Paths.get(extraConfigXmlPath), Paths.get(pluginFolderPath), DEFAULT_BASE_IMAGE)
-    }
-
-    /**
-     * Create a new Curity Server container with an additional config overlay
-     * and a specific base image.
-     *
-     * @param extraConfigXmlPath Path to an additional configuration XML file
-     * @param pluginFolderPath   Path to the plugin release folder
-     * @param baseImage          The Curity Identity Server Docker image to use
-     */
-    CurityServerContainer(String extraConfigXmlPath, String pluginFolderPath, String baseImage) {
-        this(Paths.get(extraConfigXmlPath), Paths.get(pluginFolderPath), baseImage)
+    CurityServerContainer(String extraConfigXmlPath, String pluginFolderPath, String version) {
+        this(Paths.get(extraConfigXmlPath), Paths.get(pluginFolderPath), version)
     }
 
     /**
@@ -114,12 +131,13 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
      *
      * @param extraConfigXml Path to an additional configuration XML (may be {@code null})
      * @param pluginFolder   Path to the plugin release folder
-     * @param baseImage      The Curity Identity Server Docker image to use
+     * @param version        Curity Identity Server version tag (e.g. {@code "11.0"}).
+     *                       If {@code null}, {@code latest} is used.
      */
-    CurityServerContainer(Path extraConfigXml, Path pluginFolder, String baseImage) {
-        super(buildImage(extraConfigXml, pluginFolder, baseImage))
+    CurityServerContainer(Path extraConfigXml, Path pluginFolder, String version) {
+        super(buildImage(extraConfigXml, pluginFolder, imageForVersion(version)))
 
-        withExposedPorts(ADMIN_PORT, RUNTIME_PORT)
+        withExposedPorts(ADMIN_PORT, RUNTIME_PORT, STATUS_PORT)
 
         // Pass the license key into the container for config parameterization (if set)
         def licenseKey = System.getenv("LICENSE_KEY")
@@ -132,12 +150,8 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
         // Stream container logs to test output
         withLogConsumer(new Slf4jLogConsumer(logger).withSeparateOutputStreams())
 
-        // Wait for the admin API to be ready
-        waitingFor(Wait.forHttp("/")
-                .forPort(RUNTIME_PORT)
-                .usingTls()
-                .allowInsecure()
-                .forStatusCode(404)
+        // Wait for the status endpoint to report the node is ready (fail fast on ERROR)
+        waitingFor(new CurityStatusWaitStrategy(STATUS_PORT)
                 .withStartupTimeout(Duration.ofSeconds(120)))
     }
 
@@ -151,6 +165,7 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
         def image = new ImageFromDockerfile()
                 .withDockerfileFromBuilder { builder ->
                     def b = builder.from(baseImage)
+                            .user("root")
                             .copy("base-config.xml", "/opt/idsvr/etc/init/base-config.xml")
 
                     if (extraConfigXml != null) {
@@ -162,7 +177,9 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
                         b.copy("plugin-release/", "/opt/idsvr/usr/share/plugins/$folderName")
                     }
 
-                    b.env("LOGGING_LEVEL", "DEBUG")
+                    b.run("chown -R idsvr:idsvr /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
+                            .user("idsvr")
+                            .env("LOGGING_LEVEL", "DEBUG")
                             .env("SERVICE_ROLE", "default")
                             .env("ADMIN", "true")
                             .build()
