@@ -27,3 +27,68 @@ file:
 
 There is an action to create a release and publish the JAR file to the GitHub artifact storage. This can be used to
 share the JAR file with other developers or to use it in other projects.
+
+## Test Utils
+
+The library includes test utilities for integration testing Curity Identity Server plugins. These are published as
+[Gradle test fixtures](https://docs.gradle.org/current/userguide/java_test_fixtures.html) and can be consumed by adding:
+
+```groovy
+testImplementation testFixtures('io.curity:curity-ps-sdk-commons:<version>')
+```
+
+### CurityServerContainer
+
+A [Testcontainers](https://www.testcontainers.org/)-based container that runs a Curity Identity Server instance
+with plugins and configuration pre-installed. Create instances using the `withVersion` factory method:
+
+```groovy
+def container = CurityServerContainer.withVersion("11.0")
+container.start()
+```
+
+Add one or more plugins by pointing to the plugin release folder:
+
+```groovy
+def container = CurityServerContainer.withVersion("11.0")
+    .withPlugin("build/distributions/my-plugin")
+    .withPlugin("build/distributions/another-plugin")
+container.start()
+```
+
+Supply additional configuration XML files that are merged with the bundled base configuration on startup:
+
+```groovy
+def container = CurityServerContainer.withVersion("11.0")
+    .withPlugin("build/distributions/my-plugin")
+    .withConfiguration("src/test/resources/my-plugin-config.xml")
+    .withConfiguration("src/test/resources/extra-config.xml")
+container.start()
+```
+
+Pass environment variables into the container (useful for parameterized configuration):
+
+```groovy
+def container = CurityServerContainer.withVersion("11.0")
+    .withPlugin("build/distributions/my-plugin")
+    .withConfiguration("src/test/resources/my-plugin-config.xml")
+    .withEnvVariables(["MY_SETTING": "value1", "OTHER_SETTING": "value2"])
+container.start()
+```
+
+After the container has started, use the convenience accessors to connect to it:
+
+```groovy
+container.adminUrl          // https://localhost:<mapped-port>
+container.runtimeUrl        // https://localhost:<mapped-port>
+container.adminPort         // mapped admin port
+container.runtimePort       // mapped runtime port
+container.mtlsRuntimePort   // mapped mTLS runtime port
+```
+
+You can also load configuration or run idsh commands at runtime:
+
+```groovy
+container.loadXmlConfig('<config>...</config>')
+container.configureBaseUrlFromRuntime()
+```
