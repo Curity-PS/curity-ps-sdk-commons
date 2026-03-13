@@ -99,3 +99,87 @@ container.runIdshCommands([
     "exit"
 ])
 ```
+
+### TestOAuthClient
+
+An OAuth 2.0 test client that drives the authorization code flow using a headless browser. It navigates
+to the authorization endpoint, follows redirects to the authentication page, intercepts the redirect back
+to the `redirect_uri` to capture the authorization code, and exchanges it for tokens.
+
+A default client is provided with pre-configured client credentials (`integration-test-client` /
+`integration-test-secret`) and support for code exchange and token introspection. The matching client
+must be configured in the Curity Identity Server (e.g. via a configuration XML overlay).
+
+Create a default client using the container's endpoint URLs:
+
+```groovy
+def browser = HeadlessBrowser.create()
+def client = TestOAuthClient.defaultClient(
+    browser,
+    container.authorizationEndpointUrl,
+    container.tokenEndpointUrl
+)
+```
+
+Optionally pass `acr_values` to select a specific authenticator:
+
+```groovy
+def client = TestOAuthClient.defaultClient(
+    browser,
+    container.authorizationEndpointUrl,
+    container.tokenEndpointUrl,
+    "urn:se:curity:authentication:html-form:my-authenticator"
+)
+```
+
+Run the authorization code flow. After `codeFlow()`, the browser is on the authentication page where
+you can interact with form fields:
+
+```groovy
+client.codeFlow()
+
+// Fill in the login form
+client.browser.typeByCss("#userName", "testuser")
+client.browser.typeByCss("#password", "secret")
+client.browser.clickByCss("#login-btn")
+
+// The redirect interceptor captures the code automatically
+assert client.flowComplete
+
+// Exchange the code for tokens
+def tokens = client.exchangeCode()
+assert tokens.accessToken != null
+```
+
+Introspect the access token to verify its claims:
+
+```groovy
+def introspection = client.introspect(tokens.accessToken)
+assert introspection.active == true
+assert introspection.sub == "testuser"
+```
+
+### HeadlessBrowser
+
+An [HtmlUnit](https://www.htmlunit.org/)-based headless browser for interacting with web pages in
+integration tests. It is configured to trust all SSL certificates and can optionally use a client
+certificate for mTLS.
+
+```groovy
+def browser = HeadlessBrowser.create()
+
+// Navigate and interact with pages
+browser.navigate("https://localhost:8443/some-page")
+browser.typeByCss("#username", "admin")
+browser.clickByCss("#submit")
+
+// Wait for elements to appear
+browser.waitForElement(".success-message")
+```
+
+For mTLS authentication, supply a keystore:
+
+```groovy
+def keystoreUrl = new File("src/test/resources/client.p12").toURI().toURL()
+def browser = HeadlessBrowser.create(keystoreUrl, "changeit")
+```
