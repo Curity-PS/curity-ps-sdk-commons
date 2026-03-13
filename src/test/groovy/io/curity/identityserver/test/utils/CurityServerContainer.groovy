@@ -351,4 +351,9 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
         super.start()
         configureBaseUrlFromRuntime()
     }
+
+    @Override
+    void close() {
+        super.close()
+    }
 }
