@@ -326,7 +326,7 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
     /**
      * Configure the base-url using the current runtimeUrl after the container has started.
      */
-    void configureBaseUrlFromRuntime() {
+    private void configureBaseUrlFromRuntime() {
         runIdshCommands([
                 "configure",
                 "set environments environment base-url ${getRuntimeUrl()}",
@@ -374,6 +374,7 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
 
         try {
             super.start()
+            configureBaseUrlFromRuntime()
         } catch (Exception e) {
             def log = cachedLog.get()
             if (log) {

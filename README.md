@@ -90,5 +90,12 @@ You can also load configuration or run idsh commands at runtime:
 
 ```groovy
 container.loadXmlConfig('<config>...</config>')
-container.configureBaseUrlFromRuntime()
+
+container.runIdshCommands([
+    "configure",
+    "set environments environment some-setting some-value",
+    "commit",
+    "exit no-confirm",
+    "exit"
+])
 ```
