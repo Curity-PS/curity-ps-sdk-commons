@@ -26,6 +26,7 @@ import org.htmlunit.html.HtmlTextArea
 import org.slf4j.LoggerFactory
 
 import java.time.Duration
+import java.net.URLEncoder
 /**
  * Simple HtmlUnit-based headless browser utility for integration tests.
  */
@@ -101,16 +102,19 @@ final class HeadlessBrowser implements Closeable {
     }
 
     HtmlPage startCodeFlow(String url, String clientId, String scope = null, String redirectUri = null, String acrValues = null) {
-        def queryString = "?client_id=$clientId&response_type=code"
+        def queryParams = []
+        queryParams << "client_id=${URLEncoder.encode(clientId, 'UTF-8')}"
+        queryParams << "response_type=code"
         if (scope) {
-            queryString = "${queryString}&scope=$scope"
+            queryParams << "scope=${URLEncoder.encode(scope, 'UTF-8')}"
         }
         if (redirectUri) {
-            queryString = "${queryString}&redirect_uri=$redirectUri"
+            queryParams << "redirect_uri=${URLEncoder.encode(redirectUri, 'UTF-8')}"
         }
         if (acrValues) {
-            queryString = "${queryString}&acr_values=$acrValues"
+            queryParams << "acr_values=${URLEncoder.encode(acrValues, 'UTF-8')}"
         }
+        def queryString = "?" + queryParams.join("&")
         navigate("$url$queryString")
     }
 

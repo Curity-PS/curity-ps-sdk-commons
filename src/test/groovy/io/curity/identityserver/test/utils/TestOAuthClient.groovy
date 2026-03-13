@@ -29,6 +29,7 @@ import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import java.nio.charset.StandardCharsets
+import java.io.InputStreamReader
 
 /**
  * A test OAuth client that uses a {@link HeadlessBrowser} to drive the
@@ -198,14 +199,8 @@ class TestOAuthClient implements Closeable {
         return doTokenExchange(capturedCode)
     }
 
-    private TokenResponse doTokenExchange(String code) {
-        logger.info("Exchanging authorization code for tokens at {}", tokenEndpointUrl)
-
-        def body = "grant_type=authorization_code" +
-                "&code=${URLEncoder.encode(code, StandardCharsets.UTF_8)}" +
-                "&redirect_uri=${URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)}"
-
-        def url = new URL(tokenEndpointUrl)
+    private HttpsURLConnection createPostConnection(String endpointUrl, String basicCredentials) {
+        def url = new URL(endpointUrl)
         def connection = url.openConnection() as HttpsURLConnection
 
         def sslContext = SSLContext.getInstance("TLS")
@@ -213,22 +208,40 @@ class TestOAuthClient implements Closeable {
         connection.setSSLSocketFactory(sslContext.socketFactory)
         connection.setHostnameVerifier { host, session -> true }
 
+        connection.requestMethod = "POST"
+        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+        if (basicCredentials != null) {
+            connection.setRequestProperty("Authorization", "Basic ${basicCredentials}")
+        }
+        connection.doOutput = true
+
+        return connection
+    }
+
+    private TokenResponse doTokenExchange(String code) {
+        logger.info("Exchanging authorization code for tokens at {}", tokenEndpointUrl)
+
+        def body = "grant_type=authorization_code" +
+                "&code=${URLEncoder.encode(code, StandardCharsets.UTF_8)}" +
+                "&redirect_uri=${URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)}"
+
         def credentials = Base64.encoder.encodeToString(
                 "${clientId}:${clientSecret}".getBytes(StandardCharsets.UTF_8)
         )
 
-        connection.requestMethod = "POST"
-        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-        connection.setRequestProperty("Authorization", "Basic ${credentials}")
-        connection.doOutput = true
+        def connection = createPostConnection(tokenEndpointUrl, credentials)
 
         connection.outputStream.withCloseable { out ->
             out.write(body.getBytes(StandardCharsets.UTF_8))
         }
 
         def responseCode = connection.responseCode
-        def responseBody = (responseCode >= 400 ? connection.errorStream : connection.inputStream)
-                .withCloseable { it.text }
+        def responseStream = (responseCode >= 400 ? connection.errorStream : connection.inputStream)
+        def responseBody = responseStream.withCloseable { input ->
+            new InputStreamReader(input, StandardCharsets.UTF_8).withCloseable { reader ->
+                reader.text
+            }
+        }
 
         if (responseCode != 200) {
             throw new IllegalStateException(
@@ -273,7 +286,7 @@ class TestOAuthClient implements Closeable {
 
         def responseCode = connection.responseCode
         def responseBody = (responseCode >= 400 ? connection.errorStream : connection.inputStream)
-                .withCloseable { it.text }
+                .withCloseable { inputStream -> new String(inputStream.bytes, StandardCharsets.UTF_8) }
 
         if (responseCode != 200) {
             throw new IllegalStateException(
