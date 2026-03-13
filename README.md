@@ -30,12 +30,14 @@ share the JAR file with other developers or to use it in other projects.
 
 ## Test Utils
 
-The library includes test utilities for integration testing Curity Identity Server plugins. These are published
-alongside the main JAR and can be consumed by adding the tests classifier:
+The library includes test utilities for integration testing Curity Identity Server plugins. These are published as
+[Gradle test fixtures](https://docs.gradle.org/current/userguide/java_test_fixtures.html) and can be consumed by adding:
 
 ```groovy
-testImplementation 'io.curity:curity-ps-sdk-commons:<version>:tests'
+testImplementation testFixtures('io.curity:curity-ps-sdk-commons:<version>')
 ```
+
+All transitive dependencies (Testcontainers, HtmlUnit, Spock, etc.) are included automatically.
 
 ### CurityServerContainer
 

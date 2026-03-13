@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
     id 'groovy'
+    id 'java-test-fixtures'
     id 'maven-publish'
     id "io.curity.gradle.curity-plugin-dev" version "0.3.0"
 }
@@ -20,15 +21,16 @@ dependencies {
         exclude group: 'org.slf4j', module: 'slf4j-api'
     }
 
-    testImplementation 'se.curity.identityserver:identityserver.sdk:11.0.0'
-    testImplementation 'org.spockframework:spock-core:2.4-M4-groovy-4.0'
-    testImplementation 'org.bitbucket.b_c:jose4j:0.9.6'
-    testImplementation 'org.testcontainers:testcontainers:2.0.3'
-    testImplementation 'org.testcontainers:testcontainers-spock:2.0.3'
-    testImplementation 'org.slf4j:slf4j-api:2.0.12'
-    testImplementation 'org.htmlunit:htmlunit:4.21.0'
+    // Test fixtures – these become transitive for consumers of testFixtures(...)
+    testFixturesApi 'se.curity.identityserver:identityserver.sdk:11.0.0'
+    testFixturesApi 'org.spockframework:spock-core:2.4-M4-groovy-4.0'
+    testFixturesImplementation 'org.bitbucket.b_c:jose4j:0.9.6'
+    testFixturesApi 'org.slf4j:slf4j-api:2.0.12'
+    testFixturesApi 'org.testcontainers:testcontainers:2.0.3'
+    testFixturesApi 'org.testcontainers:testcontainers-spock:2.0.3'
+    testFixturesApi 'org.htmlunit:htmlunit:4.21.0'
 
-    testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.12'
+    testFixturesRuntimeOnly 'org.slf4j:slf4j-simple:2.0.12'
 }
 
 java {
@@ -43,11 +45,6 @@ tasks.javadoc {
     exclude '**/*Configuration.java'
 }
 
-
-tasks.register('testJar', Jar) {
-    archiveClassifier = 'tests'
-    from sourceSets.test.output
-}
 
 publishing {
     repositories {
@@ -64,7 +61,6 @@ publishing {
     publications {
         gpr(MavenPublication) {
             from(components.java)
-            artifact(tasks.testJar)
         }
     }
 }
