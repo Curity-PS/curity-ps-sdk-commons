@@ -46,12 +46,13 @@ import java.time.Duration
  *     .withPlugin("build/my-plugin")
  * container.start()
  *
- * // Multiple plugins, configurations, and environment variables
+ * // Multiple plugins, configurations, files, and environment variables
  * def container = CurityServerContainer.withVersion("11.0")
  *     .withPlugin("build/my-plugin")
  *     .withPlugin("build/another-plugin")
  *     .withConfiguration("src/test/resources/plugin-config.xml")
  *     .withConfiguration("src/test/resources/extra-config.xml")
+ *     .withFile("src/test/resources/my-keystore.p12", "/opt/idsvr/etc/init/my-keystore.p12")
  *     .withEnvVariables(["MY_VAR": "value1", "OTHER_VAR": "value2"])
  * container.start()
  *
@@ -72,6 +73,7 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
 
     private List<Path> pluginFolders = []
     private List<Path> configurationFiles = []
+    private List<Map.Entry<Path, String>> files = []
     private Map<String, String> envVariables = [:]
     private String version = null
 
@@ -130,6 +132,19 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
     }
 
     /**
+     * Add a file to be copied into the container during image build.
+     * Can be called multiple times to add multiple files.
+     *
+     * @param src Path to the source file on the host
+     * @param dest Absolute path where the file should be placed in the container
+     * @return this container instance for chaining
+     */
+    CurityServerContainer withFile(String src, String dest) {
+        files.add(Map.entry(Paths.get(src), dest))
+        return this
+    }
+
+    /**
      * Add environment variables to be passed to the container at runtime.
      * Can be called multiple times; values accumulate across calls.
      *
@@ -145,7 +160,7 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
      * Build the Docker image with plugins and configuration files.
      */
     private static ImageFromDockerfile buildImage(List<Path> configurationFiles, List<Path> pluginFolders,
-                                                  String baseImage) {
+                                                  List<Map.Entry<Path, String>> files, String baseImage) {
         def baseConfigContent = readBaseConfig()
         def baseConfigTemp = createTempFile(baseConfigContent, "base-config", ".xml")
         def image = new ImageFromDockerfile()
@@ -166,6 +181,11 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
                         b.copy("${contextName}/", "/opt/idsvr/usr/share/plugins/$folderName")
                     }
 
+                    files.eachWithIndex { entry, index ->
+                        def contextName = "file-${index}"
+                        b.copy(contextName, entry.value)
+                    }
+
                     b.run("chown -R idsvr:idsvr /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
                             .run("ln -sf /dev/stdout /opt/idsvr/var/log/confsvc.log")
                             .user("idsvr")
@@ -182,6 +202,10 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
 
         configurationFiles.eachWithIndex { configFile, index ->
             image.withFileFromPath("extra-config-${index}", configFile)
+        }
+
+        files.eachWithIndex { entry, index ->
+            image.withFileFromPath("file-${index}", entry.key)
         }
 
         return image
@@ -333,7 +357,7 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
     @Override
     void start() {
         // Build the image from accumulated builder state
-        setImage(buildImage(configurationFiles, pluginFolders, imageForVersion(version)))
+        setImage(buildImage(configurationFiles, pluginFolders, files, imageForVersion(version)))
 
         // Pass the license key into the container for config parameterization (if set)
         def licenseKey = System.getenv("LICENSE_KEY")
