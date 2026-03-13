@@ -16,11 +16,9 @@
 
 package io.curity.identityserver.test.utils
 
-
 import org.slf4j.LoggerFactory
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.Slf4jLogConsumer
-import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.images.builder.ImageFromDockerfile
 
 import java.nio.charset.StandardCharsets
@@ -28,14 +26,14 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Duration
 /**
- * Testcontainer for Curity Identity Server with plugin pre-installed.
+ * Testcontainer for Curity Identity Server with plugins pre-installed.
  *
- * <p>Builds a Docker image that layers a plugin release folder on top of the
+ * <p>Builds a Docker image that layers plugin release folders on top of the
  * official Curity Identity Server image. A bundled {@code base-config.xml}
  * (shipped on the classpath of this library) is always copied into
- * {@code /opt/idsvr/etc/init/}. Callers can supply an additional
- * configuration XML that is placed alongside it in the same directory so
- * that the server merges both files on startup.</p>
+ * {@code /opt/idsvr/etc/init/}. Callers can supply additional
+ * configuration XML files that are placed alongside it in the same directory so
+ * that the server merges all files on startup.</p>
  *
  * <p>The {@code LICENSE_KEY} environment variable is forwarded from the host
  * into the container so that the configuration can use the
@@ -43,138 +41,147 @@ import java.time.Duration
  *
  * <h3>Usage</h3>
  * <pre>
- * // Base configuration only – no plugin
- * def container = new CurityServerContainer()
+ * // Single plugin with specific version
+ * def container = CurityServerContainer.withVersion("11.0")
+ *     .withPlugin("build/my-plugin")
  * container.start()
  *
- * // Plugin folder only – uses base-config.xml from the library
- * def container = new CurityServerContainer("build/my-plugin")
- *
- * // Plugin folder + additional config overlay
- * def container = new CurityServerContainer(
- *     "src/test/resources/my-plugin-config.xml",
- *     "build/my-plugin"
- * )
+ * // Multiple plugins, configurations, and environment variables
+ * def container = CurityServerContainer.withVersion("11.0")
+ *     .withPlugin("build/my-plugin")
+ *     .withPlugin("build/another-plugin")
+ *     .withConfiguration("src/test/resources/plugin-config.xml")
+ *     .withConfiguration("src/test/resources/extra-config.xml")
+ *     .withEnvVariables(["MY_VAR": "value1", "OTHER_VAR": "value2"])
  * container.start()
  *
  * def adminUrl   = container.adminUrl   // https://localhost:&lt;mapped-port&gt;
  * def runtimeUrl = container.runtimeUrl // https://localhost:&lt;mapped-port&gt;
  * </pre>
  */
-class CurityServerContainer extends GenericContainer<CurityServerContainer> {
+final class CurityServerContainer extends GenericContainer<CurityServerContainer> {
 
     private static final def logger = LoggerFactory.getLogger(CurityServerContainer.class)
     private static final int ADMIN_PORT = 6749
     private static final int RUNTIME_PORT = 8443
-    private static final String DEFAULT_BASE_IMAGE = "curity.azurecr.io/curity/idsvr:latest"
+    private static final int MTLS_RUNTIME_PORT = 8444
+    private static final int STATUS_PORT = 4465
+    private static final String BASE_IMAGE_REPOSITORY = "curity.azurecr.io/curity/idsvr"
+    private static final String DEFAULT_BASE_IMAGE = "$BASE_IMAGE_REPOSITORY:latest"
     private static final String BASE_CONFIG_RESOURCE = "base-config.xml"
 
-    /**
-     * Create a new Curity Server container with only the base configuration.
-     * No plugin or extra configuration is included.
-     */
-    CurityServerContainer() {
-        this(null as Path, null as Path, DEFAULT_BASE_IMAGE)
+    private List<Path> pluginFolders = []
+    private List<Path> configurationFiles = []
+    private Map<String, String> envVariables = [:]
+    private String version = null
+
+    private static String imageForVersion(String version) {
+        version ? "$BASE_IMAGE_REPOSITORY:$version" : DEFAULT_BASE_IMAGE
     }
 
-    /**
-     * Create a new Curity Server container with only a plugin folder.
-     * Uses the bundled base-config.xml.
-     *
-     * @param pluginFolderPath Path to the plugin release folder
-     */
-    CurityServerContainer(String pluginFolderPath) {
-        this(null as Path, Paths.get(pluginFolderPath), DEFAULT_BASE_IMAGE)
-    }
+    private CurityServerContainer() {
+        // The image passed here is a placeholder; it is replaced in start() once all builder state is accumulated.
+        super(DEFAULT_BASE_IMAGE)
 
-    /**
-     * Create a new Curity Server container with an additional config overlay.
-     *
-     * @param extraConfigXmlPath Path to an additional configuration XML file
-     * @param pluginFolderPath   Path to the plugin release folder
-     */
-    CurityServerContainer(String extraConfigXmlPath, String pluginFolderPath) {
-        this(Paths.get(extraConfigXmlPath), Paths.get(pluginFolderPath), DEFAULT_BASE_IMAGE)
-    }
-
-    /**
-     * Create a new Curity Server container with an additional config overlay
-     * and a specific base image.
-     *
-     * @param extraConfigXmlPath Path to an additional configuration XML file
-     * @param pluginFolderPath   Path to the plugin release folder
-     * @param baseImage          The Curity Identity Server Docker image to use
-     */
-    CurityServerContainer(String extraConfigXmlPath, String pluginFolderPath, String baseImage) {
-        this(Paths.get(extraConfigXmlPath), Paths.get(pluginFolderPath), baseImage)
-    }
-
-    /**
-     * Create a new Curity Server container.
-     *
-     * @param extraConfigXml Path to an additional configuration XML (may be {@code null})
-     * @param pluginFolder   Path to the plugin release folder
-     * @param baseImage      The Curity Identity Server Docker image to use
-     */
-    CurityServerContainer(Path extraConfigXml, Path pluginFolder, String baseImage) {
-        super(buildImage(extraConfigXml, pluginFolder, baseImage))
-
-        withExposedPorts(ADMIN_PORT, RUNTIME_PORT)
-
-        // Pass the license key into the container for config parameterization (if set)
-        def licenseKey = System.getenv("LICENSE_KEY")
-        if (licenseKey != null) {
-            withEnv("LICENSE_KEY", "<license-key>$licenseKey</license-key>")
-        } else {
-            withEnv("LICENSE_KEY", "")
-        }
+        withExposedPorts(ADMIN_PORT, RUNTIME_PORT, STATUS_PORT, MTLS_RUNTIME_PORT)
 
         // Stream container logs to test output
         withLogConsumer(new Slf4jLogConsumer(logger).withSeparateOutputStreams())
 
-        // Wait for the admin API to be ready
-        waitingFor(Wait.forHttp("/")
-                .forPort(RUNTIME_PORT)
-                .usingTls()
-                .allowInsecure()
-                .forStatusCode(404)
+        // Wait for the status endpoint to report the node is ready (fail fast on ERROR)
+        waitingFor(new CurityStatusWaitStrategy(STATUS_PORT)
                 .withStartupTimeout(Duration.ofSeconds(120)))
     }
 
     /**
-     * Build the Docker image with plugin and configuration.
+     * Create a new Curity Server container for the given version.
+     *
+     * @param version Version tag (e.g. {@code "11.0"}).
+     * @return a new container instance for chaining
      */
-    private static ImageFromDockerfile buildImage(Path extraConfigXml, Path pluginFolder, String baseImage) {
+    static CurityServerContainer withVersion(String version) {
+        def container = new CurityServerContainer()
+        container.version = version
+        return container
+    }
+
+    /**
+     * Add a plugin folder to be installed in the container.
+     * Can be called multiple times to add multiple plugins.
+     *
+     * @param pluginFolderPath Path to the plugin release folder
+     * @return this container instance for chaining
+     */
+    CurityServerContainer withPlugin(String pluginFolderPath) {
+        pluginFolders.add(Paths.get(pluginFolderPath))
+        return this
+    }
+
+    /**
+     * Add a configuration XML file to be loaded on startup.
+     * Can be called multiple times to add multiple configuration files.
+     *
+     * @param configXmlPath Path to the configuration XML file
+     * @return this container instance for chaining
+     */
+    CurityServerContainer withConfiguration(String configXmlPath) {
+        configurationFiles.add(Paths.get(configXmlPath))
+        return this
+    }
+
+    /**
+     * Add environment variables to be passed to the container at runtime.
+     * Can be called multiple times; values accumulate across calls.
+     *
+     * @param envVariables Map of environment variable names to values
+     * @return this container instance for chaining
+     */
+    CurityServerContainer withEnvVariables(Map<String, String> envVariables) {
+        this.envVariables.putAll(envVariables)
+        return this
+    }
+
+    /**
+     * Build the Docker image with plugins and configuration files.
+     */
+    private static ImageFromDockerfile buildImage(List<Path> configurationFiles, List<Path> pluginFolders,
+                                                  String baseImage) {
         def baseConfigContent = readBaseConfig()
         def baseConfigTemp = createTempFile(baseConfigContent, "base-config", ".xml")
-
         def image = new ImageFromDockerfile()
                 .withDockerfileFromBuilder { builder ->
                     def b = builder.from(baseImage)
+                            .user("root")
                             .copy("base-config.xml", "/opt/idsvr/etc/init/base-config.xml")
 
-                    if (extraConfigXml != null) {
-                        b.copy("extra-config.xml", "/opt/idsvr/etc/init/extra-config.xml")
+                    configurationFiles.eachWithIndex { configFile, index ->
+                        def fileName = configFile.fileName.toString()
+                        def contextName = "extra-config-${index}"
+                        b.copy(contextName, "/opt/idsvr/etc/init/${fileName}")
                     }
 
-                    if (pluginFolder != null) {
-                        def folderName = pluginFolder.getName(pluginFolder.nameCount - 1)
-                        b.copy("plugin-release/", "/opt/idsvr/usr/share/plugins/$folderName")
+                    pluginFolders.eachWithIndex { pluginFolder, index ->
+                        def folderName = pluginFolder.fileName.toString()
+                        def contextName = "plugin-${index}"
+                        b.copy("${contextName}/", "/opt/idsvr/usr/share/plugins/$folderName")
                     }
 
-                    b.env("LOGGING_LEVEL", "DEBUG")
+                    b.run("chown -R idsvr:idsvr /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
+                            .run("ln -sf /dev/stdout /opt/idsvr/var/log/confsvc.log")
+                            .user("idsvr")
+                            .env("LOGGING_LEVEL", "DEBUG")
                             .env("SERVICE_ROLE", "default")
                             .env("ADMIN", "true")
                             .build()
                 }
                 .withFileFromPath("base-config.xml", baseConfigTemp)
 
-        if (pluginFolder != null) {
-            image.withFileFromPath("plugin-release", pluginFolder)
+        pluginFolders.eachWithIndex { pluginFolder, index ->
+            image.withFileFromPath("plugin-${index}", pluginFolder)
         }
 
-        if (extraConfigXml != null) {
-            image.withFileFromPath("extra-config.xml", extraConfigXml)
+        configurationFiles.eachWithIndex { configFile, index ->
+            image.withFileFromPath("extra-config-${index}", configFile)
         }
 
         return image
@@ -197,8 +204,8 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
         def resource = CurityServerContainer.class.getClassLoader().getResourceAsStream(BASE_CONFIG_RESOURCE)
         if (resource == null) {
             throw new IllegalStateException(
-                "Could not find ${BASE_CONFIG_RESOURCE} on the classpath. " +
-                "Ensure the curity-ps-sdk-commons tests JAR is on the test classpath."
+                    "Could not find ${BASE_CONFIG_RESOURCE} on the classpath. " +
+                            "Ensure the curity-ps-sdk-commons tests JAR is on the test classpath."
             )
         }
 
@@ -241,6 +248,108 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
      */
     int getRuntimePort() {
         getMappedPort(RUNTIME_PORT)
+    }
+
+    /**
+     * Get the mapped runtime mtls port.
+     *
+     * @return The host port mapped to the container's mTLS runtime port
+     */
+    int getMtlsRuntimePort() {
+        getMappedPort(MTLS_RUNTIME_PORT)
+    }
+
+    /**
+     * Get the full URL to the authorize endpoint as configured in the bundled base-config.xml.
+     *
+     * @return full URL
+     */
+    String getAuthorizationEndpointUrl() {
+        getRuntimeUrl() + "/oauth/v2/oauth-authorize"
+    }
+
+    /**
+     * Get the full URL to the token endpoint as configured in the bundled base-config.xml.
+     *
+     * @return full URL
+     */
+    String getTokenEndpointUrl() {
+        getRuntimeUrl() + "/oauth/v2/oauth-token"
+    }
+
+    /**
+     * Load an XML configuration snippet into the running server by writing it
+     * to a temporary file inside the container and then running
+     * {@code load merge <path>} in idsh.
+     *
+     * @param xml the XML configuration to load
+     */
+    void loadXmlConfig(String xml) {
+        if (!isRunning()) {
+            throw new IllegalStateException("Container must be running before loading XML config")
+        }
+        def containerPath = "/tmp/load-config-${System.nanoTime()}.xml"
+        def writeResult = execInContainer("sh", "-c", "cat > ${containerPath} <<'XMLEOF'\n${xml}\nXMLEOF")
+        if (writeResult.exitCode != 0) {
+            throw new IllegalStateException("Failed to write XML config file: ${writeResult.stderr}")
+        }
+        runIdshCommands([
+                "configure",
+                "load merge ${containerPath}",
+                "commit",
+                "exit no-confirm",
+                "exit"
+        ])
+    }
+
+    /**
+     * Run a sequence of idsh commands after the container has started.
+     */
+    void runIdshCommands(List<String> commands) {
+        if (!isRunning()) {
+            throw new IllegalStateException("Container must be running before executing idsh")
+        }
+        def script = commands.join("\n") + "\n"
+        def cmd = "set -o pipefail; cat <<'EOF' | idsh\n${script}EOF"
+        def result = execInContainer("sh", "-c", cmd)
+        if (result.exitCode != 0) {
+            throw new IllegalStateException("idsh failed: ${result.exitCode}\n${result.stderr}")
+        }
+    }
+
+    /**
+     * Configure the base-url using the current runtimeUrl after the container has started.
+     */
+    private void configureBaseUrlFromRuntime() {
+        runIdshCommands([
+                "configure",
+                "set environments environment base-url ${getRuntimeUrl()}",
+                "commit",
+                "exit no-confirm",
+                "exit"
+        ])
+    }
+
+    @Override
+    void start() {
+        // Build the image from accumulated builder state
+        setImage(buildImage(configurationFiles, pluginFolders, imageForVersion(version)))
+
+        // Pass the license key into the container for config parameterization (if set)
+        def licenseKey = System.getenv("LICENSE_KEY")
+        if (licenseKey != null) {
+            withEnv("LICENSE_KEY", "<license-key>$licenseKey</license-key>")
+        } else {
+            withEnv("LICENSE_KEY", "")
+        }
+
+        // Pass user-supplied environment variables as runtime container env vars
+        envVariables.each { key, value ->
+            withEnv(key, value)
+        }
+
+        super.start()
+        configureBaseUrlFromRuntime()
     }
 
     @Override
