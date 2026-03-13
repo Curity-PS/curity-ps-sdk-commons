@@ -36,3 +36,6 @@ pom.xml.versionsBackup
 /previewer/
 
 **/build/
+
+# Claude Code
+.claude/

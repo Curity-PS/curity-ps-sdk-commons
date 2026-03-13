@@ -24,7 +24,7 @@ dependencies {
     // Test fixtures – these become transitive for consumers of testFixtures(...)
     testFixturesApi 'se.curity.identityserver:identityserver.sdk:11.0.0'
     testFixturesApi 'org.spockframework:spock-core:2.4-M4-groovy-4.0'
-    testFixturesApi 'org.bitbucket.b_c:jose4j:0.9.6'
+    testFixturesImplementation 'org.bitbucket.b_c:jose4j:0.9.6'
     testFixturesApi 'org.slf4j:slf4j-api:2.0.12'
     testFixturesApi 'org.testcontainers:testcontainers:2.0.3'
     testFixturesApi 'org.testcontainers:testcontainers-spock:2.0.3'
