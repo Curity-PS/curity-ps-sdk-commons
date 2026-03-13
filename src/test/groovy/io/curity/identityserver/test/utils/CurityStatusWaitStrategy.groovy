@@ -42,7 +42,7 @@ class CurityStatusWaitStrategy extends AbstractWaitStrategy {
 
     private final int statusPort
 
-    private static boolean hadConnection = false
+    private boolean hadConnection = false
 
     CurityStatusWaitStrategy(int statusPort) {
         this.statusPort = statusPort
@@ -50,6 +50,7 @@ class CurityStatusWaitStrategy extends AbstractWaitStrategy {
 
     @Override
     protected void waitUntilReady() {
+        hadConnection = false
         def deadline = Instant.now() + startupTimeout
 
         while (Instant.now() < deadline) {
@@ -87,13 +88,18 @@ class CurityStatusWaitStrategy extends AbstractWaitStrategy {
             } catch (ContainerLaunchException e) {
                 throw e
             } catch (Exception ignored) {
-                if(hadConnection) {
+                if (hadConnection) {
                     throw new ContainerLaunchException(
                             "Lost connection to Curity Identity Server")
                 }
             }
 
-            Thread.sleep(POLL_INTERVAL.toMillis())
+            try {
+                Thread.sleep(POLL_INTERVAL.toMillis())
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt()
+                throw new ContainerLaunchException("Curity Identity Server wait interrupted", e)
+            }
         }
 
         throw new ContainerLaunchException(
