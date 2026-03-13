@@ -205,7 +205,7 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
         if (resource == null) {
             throw new IllegalStateException(
                     "Could not find ${BASE_CONFIG_RESOURCE} on the classpath. " +
-                            "Ensure the curity-ps-sdk-commons tests JAR is on the test classpath."
+                            "Ensure the curity-ps-sdk-commons test fixtures are on the classpath."
             )
         }
 
