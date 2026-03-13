@@ -25,9 +25,6 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Duration
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
-
 /**
  * Testcontainer for Curity Identity Server with plugins pre-installed.
  *
@@ -170,6 +167,7 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
                     }
 
                     b.run("chown -R idsvr:idsvr /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
+                            .run("ln -sf /dev/stdout /opt/idsvr/var/log/confsvc.log")
                             .user("idsvr")
                             .env("LOGGING_LEVEL", "DEBUG")
                             .env("SERVICE_ROLE", "default")
@@ -350,43 +348,7 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
             withEnv(key, value)
         }
 
-        def stop = new AtomicBoolean(false)
-        def cachedLog = new AtomicReference<String>(null)
-        def poller = new Thread({
-            while (!stop.get()) {
-                if (isRunning()) {
-                    try {
-                        def result = execInContainer("cat", "/opt/idsvr/var/log/confsvc.log")
-                        if (result.stdout) {
-                            cachedLog.set(result.stdout)
-                        }
-                    } catch (Exception ignored) {
-                    }
-                }
-                try {
-                    Thread.sleep(100)
-                } catch (InterruptedException ignored) {
-                    break
-                }
-            }
-        })
-        poller.daemon = true
-        poller.start()
-
-        try {
-            super.start()
-            configureBaseUrlFromRuntime()
-        } catch (Exception e) {
-            def log = cachedLog.get()
-            if (log) {
-                logger.error("=== /opt/idsvr/var/log/confsvc.log ===\n{}", log)
-            } else {
-                logger.warn("confsvc.log was not collected before the container stopped")
-            }
-            throw e
-        } finally {
-            stop.set(true)
-            poller.interrupt()
-        }
+        super.start()
+        configureBaseUrlFromRuntime()
     }
 }
