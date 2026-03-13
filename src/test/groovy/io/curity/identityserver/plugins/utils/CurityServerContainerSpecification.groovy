@@ -21,11 +21,16 @@ import spock.lang.Specification
 
 class CurityServerContainerSpecification extends Specification {
     def "A Curity container can be started with base config for integration test purposes"() {
-        when: "A container is created"
+        given: "A container is created"
         def container = CurityServerContainer.withVersion("11.0")
+
+        when: "The container is started"
         container.start()
 
-        then: "It is started"
+        then: "It is running"
         container.isRunning()
+
+        cleanup:
+        container?.close()
     }
 }
