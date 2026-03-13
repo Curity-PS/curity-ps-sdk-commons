@@ -310,7 +310,7 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
             throw new IllegalStateException("Container must be running before executing idsh")
         }
         def script = commands.join("\n") + "\n"
-        def cmd = "set -o pipefail; cat <<'EOF' | idsh\n${script}EOF"
+        def cmd = "cat <<'EOF' | idsh\n${script}EOF"
         def result = execInContainer("sh", "-c", cmd)
         if (result.exitCode != 0) {
             throw new IllegalStateException("idsh failed: ${result.exitCode}\n${result.stderr}")
@@ -354,6 +354,6 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
 
     @Override
     void close() {
-        super.close()
+        // noop
     }
 }
