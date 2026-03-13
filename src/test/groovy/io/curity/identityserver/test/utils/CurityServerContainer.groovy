@@ -44,19 +44,13 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * <h3>Usage</h3>
  * <pre>
- * // Base configuration only – no plugin, latest image
- * def container = new CurityServerContainer()
- * container.start()
- *
  * // Single plugin with specific version
- * def container = new CurityServerContainer()
- *     .withVersion("11.0")
+ * def container = CurityServerContainer.withVersion("11.0")
  *     .withPlugin("build/my-plugin")
  * container.start()
  *
  * // Multiple plugins, configurations, and environment variables
- * def container = new CurityServerContainer()
- *     .withVersion("11.0")
+ * def container = CurityServerContainer.withVersion("11.0")
  *     .withPlugin("build/my-plugin")
  *     .withPlugin("build/another-plugin")
  *     .withConfiguration("src/test/resources/plugin-config.xml")
@@ -88,12 +82,7 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
         version ? "$BASE_IMAGE_REPOSITORY:$version" : DEFAULT_BASE_IMAGE
     }
 
-    /**
-     * Create a new Curity Server container. Use builder methods
-     * {@link #withPlugin}, {@link #withConfiguration}, {@link #withVersion},
-     * and {@link #withEnvVariables} to configure it before starting.
-     */
-    CurityServerContainer() {
+    private CurityServerContainer() {
         super(DEFAULT_BASE_IMAGE)
 
         withExposedPorts(ADMIN_PORT, RUNTIME_PORT, STATUS_PORT, MTLS_RUNTIME_PORT)
@@ -107,14 +96,15 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
     }
 
     /**
-     * Set the Curity Identity Server version to use.
+     * Create a new Curity Server container for the given version.
      *
-     * @param version Version tag (e.g. {@code "11.0"}). If not set, {@code latest} is used.
-     * @return this container instance for chaining
+     * @param version Version tag (e.g. {@code "11.0"}).
+     * @return a new container instance for chaining
      */
-    CurityServerContainer withVersion(String version) {
-        _version = version
-        return this
+    static CurityServerContainer withVersion(String version) {
+        def container = new CurityServerContainer()
+        container._version = version
+        return container
     }
 
     /**
