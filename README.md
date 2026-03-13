@@ -106,9 +106,7 @@ An OAuth 2.0 test client that drives the authorization code flow using a headles
 to the authorization endpoint, follows redirects to the authentication page, intercepts the redirect back
 to the `redirect_uri` to capture the authorization code, and exchanges it for tokens.
 
-A default client is provided with pre-configured client credentials (`integration-test-client` /
-`integration-test-secret`) and support for code exchange and token introspection. The matching client
-must be configured in the Curity Identity Server (e.g. via a configuration XML overlay).
+A default client is provided with pre-configured client credentials and support for code flow and token introspection. 
 
 Create a default client using the container's endpoint URLs:
 
@@ -133,30 +131,34 @@ def client = TestOAuthClient.defaultClient(
 ```
 
 Run the authorization code flow. After `codeFlow()`, the browser is on the authentication page where
-you can interact with form fields:
+you can interact with form fields. Example Spock test:
 
 ```groovy
+when: "The code flow is started and the user authenticates"
 client.codeFlow()
-
-// Fill in the login form
 client.browser.typeByCss("#userName", "testuser")
 client.browser.typeByCss("#password", "secret")
 client.browser.clickByCss("#login-btn")
 
-// The redirect interceptor captures the code automatically
-assert client.flowComplete
+then: "The flow completes with an authorization code"
+client.flowComplete
 
-// Exchange the code for tokens
+when: "The code is exchanged for tokens"
 def tokens = client.exchangeCode()
-assert tokens.accessToken != null
+
+then: "An access token is returned"
+tokens.accessToken != null
 ```
 
 Introspect the access token to verify its claims:
 
 ```groovy
+when: "The access token is introspected"
 def introspection = client.introspect(tokens.accessToken)
-assert introspection.active == true
-assert introspection.sub == "testuser"
+
+then: "The token is active and contains the expected subject"
+introspection.active == true
+introspection.sub == "testuser"
 ```
 
 ### HeadlessBrowser
