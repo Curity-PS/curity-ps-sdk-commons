@@ -1,4 +1,4 @@
-# curity-sdk-commons
+# curity-ps-sdk-commons
 [![Quality](https://img.shields.io/badge/quality-demo-red)](https://curity.io/resources/code-examples/status/)
 
 Curity SDK Commons, a package of Java utility classes for the Curity Identity Server plugin development
@@ -30,11 +30,11 @@ share the JAR file with other developers or to use it in other projects.
 
 ## Test Utils
 
-The library includes test utilities for integration testing Curity Identity Server plugins. These are published as
-[Gradle test fixtures](https://docs.gradle.org/current/userguide/java_test_fixtures.html) and can be consumed by adding:
+The library includes test utilities for integration testing Curity Identity Server plugins. These are published
+alongside the main JAR and can be consumed by adding the tests classifier:
 
 ```groovy
-testImplementation testFixtures('io.curity:curity-ps-sdk-commons:<version>')
+testImplementation 'io.curity:curity-ps-sdk-commons:<version>:tests'
 ```
 
 ### CurityServerContainer

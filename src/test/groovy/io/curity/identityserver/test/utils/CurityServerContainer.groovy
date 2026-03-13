@@ -62,7 +62,7 @@ import java.util.concurrent.atomic.AtomicReference
  * def runtimeUrl = container.runtimeUrl // https://localhost:&lt;mapped-port&gt;
  * </pre>
  */
-class CurityServerContainer extends GenericContainer<CurityServerContainer> {
+final class CurityServerContainer extends GenericContainer<CurityServerContainer> {
 
     private static final def logger = LoggerFactory.getLogger(CurityServerContainer.class)
     private static final int ADMIN_PORT = 6749
@@ -73,16 +73,17 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
     private static final String DEFAULT_BASE_IMAGE = "$BASE_IMAGE_REPOSITORY:latest"
     private static final String BASE_CONFIG_RESOURCE = "base-config.xml"
 
-    private List<Path> _pluginFolders = []
-    private List<Path> _configurationFiles = []
-    private Map<String, String> _envVariables = [:]
-    private String _version = null
+    private List<Path> pluginFolders = []
+    private List<Path> configurationFiles = []
+    private Map<String, String> envVariables = [:]
+    private String version = null
 
     private static String imageForVersion(String version) {
         version ? "$BASE_IMAGE_REPOSITORY:$version" : DEFAULT_BASE_IMAGE
     }
 
     private CurityServerContainer() {
+        // The image passed here is a placeholder; it is replaced in start() once all builder state is accumulated.
         super(DEFAULT_BASE_IMAGE)
 
         withExposedPorts(ADMIN_PORT, RUNTIME_PORT, STATUS_PORT, MTLS_RUNTIME_PORT)
@@ -103,7 +104,7 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
      */
     static CurityServerContainer withVersion(String version) {
         def container = new CurityServerContainer()
-        container._version = version
+        container.version = version
         return container
     }
 
@@ -115,7 +116,7 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
      * @return this container instance for chaining
      */
     CurityServerContainer withPlugin(String pluginFolderPath) {
-        _pluginFolders.add(Paths.get(pluginFolderPath))
+        pluginFolders.add(Paths.get(pluginFolderPath))
         return this
     }
 
@@ -127,19 +128,19 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
      * @return this container instance for chaining
      */
     CurityServerContainer withConfiguration(String configXmlPath) {
-        _configurationFiles.add(Paths.get(configXmlPath))
+        configurationFiles.add(Paths.get(configXmlPath))
         return this
     }
 
     /**
-     * Add environment variables to be set in the container.
+     * Add environment variables to be passed to the container at runtime.
      * Can be called multiple times; values accumulate across calls.
      *
      * @param envVariables Map of environment variable names to values
      * @return this container instance for chaining
      */
     CurityServerContainer withEnvVariables(Map<String, String> envVariables) {
-        _envVariables.putAll(envVariables)
+        this.envVariables.putAll(envVariables)
         return this
     }
 
@@ -147,7 +148,7 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
      * Build the Docker image with plugins and configuration files.
      */
     private static ImageFromDockerfile buildImage(List<Path> configurationFiles, List<Path> pluginFolders,
-                                                  Map<String, String> envVariables, String baseImage) {
+                                                  String baseImage) {
         def baseConfigContent = readBaseConfig()
         def baseConfigTemp = createTempFile(baseConfigContent, "base-config", ".xml")
         def image = new ImageFromDockerfile()
@@ -173,12 +174,7 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
                             .env("LOGGING_LEVEL", "DEBUG")
                             .env("SERVICE_ROLE", "default")
                             .env("ADMIN", "true")
-
-                    envVariables.each { key, value ->
-                        b.env(key, value)
-                    }
-
-                    b.build()
+                            .build()
                 }
                 .withFileFromPath("base-config.xml", baseConfigTemp)
 
@@ -259,14 +255,14 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
     /**
      * Get the mapped runtime mtls port.
      *
-     * @return The host port mapped to the container's runtime port
+     * @return The host port mapped to the container's mTLS runtime port
      */
     int getMtlsRuntimePort() {
         getMappedPort(MTLS_RUNTIME_PORT)
     }
 
     /**
-     * Get the full URL to the authorize endpoint
+     * Get the full URL to the authorize endpoint as configured in the bundled base-config.xml.
      *
      * @return full URL
      */
@@ -275,7 +271,7 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
     }
 
     /**
-     * Get the full URL to the token endpoint
+     * Get the full URL to the token endpoint as configured in the bundled base-config.xml.
      *
      * @return full URL
      */
@@ -316,7 +312,7 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
             throw new IllegalStateException("Container must be running before executing idsh")
         }
         def script = commands.join("\n") + "\n"
-        def cmd = "cat <<'EOF' | idsh\n${script}EOF"
+        def cmd = "set -o pipefail; cat <<'EOF' | idsh\n${script}EOF"
         def result = execInContainer("sh", "-c", cmd)
         if (result.exitCode != 0) {
             throw new IllegalStateException("idsh failed: ${result.exitCode}\n${result.stderr}")
@@ -339,7 +335,7 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
     @Override
     void start() {
         // Build the image from accumulated builder state
-        setImage(buildImage(_configurationFiles, _pluginFolders, _envVariables, imageForVersion(_version)))
+        setImage(buildImage(configurationFiles, pluginFolders, imageForVersion(version)))
 
         // Pass the license key into the container for config parameterization (if set)
         def licenseKey = System.getenv("LICENSE_KEY")
@@ -347,6 +343,11 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
             withEnv("LICENSE_KEY", "<license-key>$licenseKey</license-key>")
         } else {
             withEnv("LICENSE_KEY", "")
+        }
+
+        // Pass user-supplied environment variables as runtime container env vars
+        envVariables.each { key, value ->
+            withEnv(key, value)
         }
 
         def stop = new AtomicBoolean(false)
@@ -387,10 +388,5 @@ class CurityServerContainer extends GenericContainer<CurityServerContainer> {
             stop.set(true)
             poller.interrupt()
         }
-    }
-
-    @Override
-    void close() {
-        super.close()
     }
 }
