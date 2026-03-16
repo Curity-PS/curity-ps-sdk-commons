@@ -93,6 +93,21 @@
             <backchannel-authentication>
             </backchannel-authentication>
           </client-capabilities>
+          <client-store>
+            <config-backed>
+              <client>
+                <id>integration-test-client</id>
+                <secret>$5$Xa5whAuzFvmOeDe7$esKpjvfqur7rT9qtdptnRbH2LdzBEAZBlLo1PCHnBS4</secret>
+                <redirect-uris>http://localhost/callback</redirect-uris>
+                <scope>openid</scope>
+                <scope>profile</scope>
+                <capabilities>
+                  <code/>
+                  <introspection/>
+                </capabilities>
+              </client>
+            </config-backed>
+          </client-store>
           <scopes>
             <scope>
               <id>address</id>
