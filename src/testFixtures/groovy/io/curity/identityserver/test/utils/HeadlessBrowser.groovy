@@ -68,13 +68,13 @@ final class HeadlessBrowser implements Closeable {
         client.options.setTimeout((int) config.pageLoadTimeout.toMillis())
         client.ajaxController = new NicelyResynchronizingAjaxController()
         if (config.keystoreUrl != null) {
-            client.options.setSSLClientCertificate(config.keystoreUrl, config.keystorePassword, config.keystoreType)
+            client.options.setSSLClientCertificateKeyStore(config.keystoreUrl, config.keystorePassword, config.keystoreType)
         }
         return client
     }
 
     void setClientCertificate(URL keystoreUrl, String keystorePassword, String keystoreType = "PKCS12") {
-        webClient.options.setSSLClientCertificate(keystoreUrl, keystorePassword, keystoreType)
+        webClient.options.setSSLClientCertificateKeyStore(keystoreUrl, keystorePassword, keystoreType)
     }
 
     WebClient getClient() {
