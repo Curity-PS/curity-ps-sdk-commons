@@ -16,6 +16,7 @@
 
 package io.curity.identityserver.test.utils
 
+import io.curity.identityserver.test.utils.constants.TestConstants
 import io.curity.identityserver.test.utils.crypto.TrustAllTrustManager
 import org.htmlunit.WebRequest
 import org.htmlunit.WebResponse
@@ -61,9 +62,9 @@ import java.nio.charset.StandardCharsets
 class TestOAuthClient implements Closeable {
 
     private static final def logger = LoggerFactory.getLogger(TestOAuthClient.class)
-    public static final String DEFAULT_REDIRECT_URI = "http://localhost/callback"
-    public static final String DEFAULT_CLIENT_ID = "integration-test-client"
-    public static final String DEFAULT_CLIENT_SECRET = "integration-test-secret"
+    private static final String DEFAULT_REDIRECT_URI = TestConstants.CodeFlow.REDIRECT_URI
+    private static final String DEFAULT_CLIENT_ID = TestConstants.CodeFlow.CLIENT_ID
+    private static final String DEFAULT_CLIENT_SECRET = TestConstants.CodeFlow.CLIENT_SECRET
     private static final String DEFAULT_SCOPE = ""
 
     private final HeadlessBrowser browser
