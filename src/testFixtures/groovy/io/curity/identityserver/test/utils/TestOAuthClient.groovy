@@ -16,12 +16,12 @@
 
 package io.curity.identityserver.test.utils
 
+import io.curity.identityserver.test.utils.crypto.TrustAllTrustManager
 import org.htmlunit.WebRequest
 import org.htmlunit.WebResponse
 import org.htmlunit.WebResponseData
 import org.htmlunit.util.NameValuePair
 import org.htmlunit.util.WebConnectionWrapper
-import io.curity.identityserver.test.utils.crypto.TrustAllTrustManager
 import org.jose4j.json.JsonUtil
 import org.slf4j.LoggerFactory
 
@@ -29,8 +29,6 @@ import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import java.nio.charset.StandardCharsets
-import java.io.InputStreamReader
-
 /**
  * A test OAuth client that uses a {@link HeadlessBrowser} to drive the
  * authorization code flow against a Curity Identity Server.
@@ -123,14 +121,15 @@ class TestOAuthClient implements Closeable {
      * @param authorizeEndpointUrl the authorization endpoint URL
      * @param tokenEndpointUrl the token endpoint URL
      * @param acrValues optional acr_values parameter for the authorization request
+     * @param scope optional scope parameter (defaults to empty)
      * @return a new TestOAuthClient configured with defaults
      */
-    static TestOAuthClient defaultClient(HeadlessBrowser browser, String authorizeEndpointUrl, String tokenEndpointUrl, String acrValues = null) {
+    static TestOAuthClient defaultClient(HeadlessBrowser browser, String authorizeEndpointUrl, String tokenEndpointUrl, String acrValues = null, String scope = DEFAULT_SCOPE) {
         def builder = new Builder()
                 .browser(browser)
                 .clientId(DEFAULT_CLIENT_ID)
                 .clientSecret(DEFAULT_CLIENT_SECRET)
-                .scope(DEFAULT_SCOPE)
+                .scope(scope)
                 .authorizeEndpointUrl(authorizeEndpointUrl)
                 .tokenEndpointUrl(tokenEndpointUrl)
         if (acrValues) {
@@ -171,8 +170,11 @@ class TestOAuthClient implements Closeable {
      * complete authentication. Once the server redirects to the redirect URI,
      * the authorization code is captured automatically. Call {@link #exchangeCode()}
      * to exchange it for tokens.</p>
+     *
+     * @param scope optional scope to use for this request (defaults to the client's configured scope)
+     * @param acrValues optional acr_values to use for this request (defaults to the client's configured acr_values)
      */
-    void codeFlow() {
+    void codeFlow(String scope = this.scope, String acrValues = this.acrValues) {
         capturedCode = null
         capturedError = null
         flowComplete = false
