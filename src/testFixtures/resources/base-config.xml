@@ -13,7 +13,9 @@
       <services>
         <zones>
           <default-zone>
-            <symmetric-key>data:text/plain;aes,v:S.Z3JzWERXSHZNZkRDRDNERg==.A2XfnvIuCVinCO3v5JqbkA==.ymj-l72LcnXh9W76Kr-rVbEB69bhnLJN3cPl14As3-8i-HOl-cbV0mW0uz8hErDoCCfw9xiPaHc09HtEYsl2LMvs2998dw9cA1J7VceJMVU=.7P5rhJfy5VXAu37nwyLYPgcFp44vFnGBFVAlE6tdGw0=</symmetric-key>
+            <symmetric-key>
+              data:text/plain;aes,v:S.Z3JzWERXSHZNZkRDRDNERg==.A2XfnvIuCVinCO3v5JqbkA==.ymj-l72LcnXh9W76Kr-rVbEB69bhnLJN3cPl14As3-8i-HOl-cbV0mW0uz8hErDoCCfw9xiPaHc09HtEYsl2LMvs2998dw9cA1J7VceJMVU=.7P5rhJfy5VXAu37nwyLYPgcFp44vFnGBFVAlE6tdGw0=
+            </symmetric-key>
           </default-zone>
         </zones>
         <service-role>
@@ -85,13 +87,11 @@
             <authentication-profile>authentication-service</authentication-profile>
           </authentication-service>
           <client-capabilities>
-            <code>
-            </code>
+            <code/>
             <client-credentials/>
             <introspection/>
             <oauth-token-exchange/>
-            <backchannel-authentication>
-            </backchannel-authentication>
+            <backchannel-authentication/>
           </client-capabilities>
           <client-store>
             <config-backed>
@@ -104,6 +104,14 @@
                 <capabilities>
                   <code/>
                   <introspection/>
+                </capabilities>
+              </client>
+              <client>
+                <id>grapql-admin</id>
+                <secret>$5$Xa5whAuzFvmOeDe7$esKpjvfqur7rT9qtdptnRbH2LdzBEAZBlLo1PCHnBS4</secret>
+                <scope>um-admin</scope>
+                <capabilities>
+                  <client-credentials/>
                 </capabilities>
               </client>
             </config-backed>
@@ -245,6 +253,13 @@
               <description>OpenID Connect zoneinfo claim</description>
               <value-provided-by>account-manager-claims-provider</value-provided-by>
             </claim>
+            <claim>
+              <name>groups</name>
+              <transformation>
+                <value-transformation-procedure>ZnVuY3Rpb24gZ2VuZXJhdGUoKSB7CiAgICByZXR1cm4gWyJhZG1pbiJdOwp9
+                </value-transformation-procedure>
+              </transformation>
+            </claim>
             <claims-value-provider>
               <id>account-manager-claims-provider</id>
               <account-manager-claims-provider xmlns="https://curity.se/ns/ext-conf/account-manager-claims-provider">
@@ -256,6 +271,9 @@
             <claims-mappers>
               <claims-mapper>
                 <id>default</id>
+                <access_token>
+                  <claim>groups</claim>
+                </access_token>
                 <id_token>
                   <claim>address</claim>
                   <claim>birthdate</claim>
@@ -362,6 +380,28 @@
           <default-data-source>default-datasource</default-data-source>
         </default-token-issuer>
       </token-issuers>
+    </profile>
+    <profile>
+      <id>um</id>
+      <type xmlns:um="https://curity.se/ns/conf/profile/user-management">um:user-management-service</type>
+      <settings>
+        <user-management-service xmlns="https://curity.se/ns/conf/profile/user-management">
+          <api-authentication>
+            <oauth-service>token-service</oauth-service>
+          </api-authentication>
+          <authorization-manager>group-authz</authorization-manager>
+          <account-manager>default-account-manager</account-manager>
+          <bucket-data-source>default-datasource</bucket-data-source>
+          <token-data-source>default-datasource</token-data-source>
+        </user-management-service>
+      </settings>
+      <endpoints>
+        <endpoint>
+          <id>um-graph</id>
+          <uri>/graph</uri>
+          <endpoint-kind>um-graphql-api</endpoint-kind>
+        </endpoint>
+      </endpoints>
     </profile>
   </profiles>
   <facilities xmlns="https://curity.se/ns/conf/base">
@@ -490,11 +530,11 @@
     <ios>
       <level>
         <nr>0</nr>
-        <prompt>\h> </prompt>
+        <prompt>\h></prompt>
       </level>
       <level>
         <nr>15</nr>
-        <prompt>\h# </prompt>
+        <prompt>\h#</prompt>
       </level>
       <privilege>
         <mode>exec</mode>

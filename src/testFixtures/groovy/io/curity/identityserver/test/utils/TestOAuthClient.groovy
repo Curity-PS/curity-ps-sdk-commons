@@ -97,7 +97,9 @@ class TestOAuthClient implements Closeable {
                 .sslContext(sslContext)
                 .build()
 
-        installRedirectInterceptor()
+        if (browser != null) {
+            installRedirectInterceptor()
+        }
     }
 
     private void installRedirectInterceptor() {
@@ -146,6 +148,20 @@ class TestOAuthClient implements Closeable {
             builder.acrValues(acrValues)
         }
         return builder.build()
+    }
+
+    /**
+     * Create a TestOAuthClient for the client credentials flow (no browser needed).
+     *
+     * @param clientId the client ID
+     * @param clientSecret the client secret
+     * @param tokenEndpointUrl the token endpoint URL
+     * @param scope optional scope parameter (defaults to empty)
+     * @return a new TestOAuthClient configured for client credentials
+     */
+    static TestOAuthClient clientCredentialsClient(String clientId, String clientSecret, String tokenEndpointUrl, String scope = DEFAULT_SCOPE) {
+        return new TestOAuthClient(null, clientId, clientSecret, scope,
+                null, tokenEndpointUrl, null, null)
     }
 
     /**
@@ -209,6 +225,42 @@ class TestOAuthClient implements Closeable {
             )
         }
         return doTokenExchange(capturedCode)
+    }
+
+    /**
+     * Execute the client credentials grant.
+     *
+     * @param scope optional scope to use for this request (defaults to the client's configured scope)
+     * @return the token response containing access token and other fields
+     */
+    TokenResponse clientCredentials(String scope = this.scope) {
+        logger.info("Executing client credentials grant at {}", tokenEndpointUrl)
+
+        def body = "grant_type=client_credentials"
+        if (scope) {
+            body += "&scope=${URLEncoder.encode(scope, StandardCharsets.UTF_8)}"
+        }
+
+        def credentials = Base64.encoder.encodeToString(
+                "${clientId}:${clientSecret}".getBytes(StandardCharsets.UTF_8)
+        )
+
+        def request = HttpRequest.newBuilder()
+                .uri(URI.create(tokenEndpointUrl))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Authorization", "Basic ${credentials}")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build()
+
+        def response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
+        if (response.statusCode() != 200) {
+            throw new IllegalStateException(
+                    "Client credentials grant failed with status ${response.statusCode()}: ${response.body()}"
+            )
+        }
+
+        return TokenResponse.fromJson(response.body())
     }
 
     private TokenResponse doTokenExchange(String code) {
@@ -285,7 +337,9 @@ class TestOAuthClient implements Closeable {
 
     @Override
     void close() {
-        browser.close()
+        if (browser != null) {
+            browser.close()
+        }
     }
 
     /**

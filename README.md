@@ -163,6 +163,47 @@ introspection.active == true
 introspection.sub == "testuser"
 ```
 
+For machine-to-machine flows that don't require a browser, create a client credentials client:
+
+```groovy
+def client = TestOAuthClient.clientCredentialsClient(
+    "my-client-id",
+    "my-client-secret",
+    container.tokenEndpointUrl,
+    "requested-scope"
+)
+
+def tokens = client.clientCredentials()
+tokens.accessToken != null
+```
+
+### GraphQLClient
+
+A test client for the Curity Identity Server's User Management GraphQL API. It authenticates using
+the client credentials grant via a `TestOAuthClient` and lazily fetches an access token on the first
+request, reusing it for all subsequent calls.
+
+```groovy
+def oauth = TestOAuthClient.clientCredentialsClient(
+    "graphql-admin", "admin-secret",
+    container.tokenEndpointUrl, "um-admin"
+)
+def graphql = new GraphQLClient(container.runtimeUrl + "/graph", oauth)
+```
+
+Execute arbitrary queries or mutations:
+
+```groovy
+def result = graphql.query("query { accounts { edges { node { id userName } } } }")
+```
+
+Convenience methods are provided for SSO bucket operations:
+
+```groovy
+def bucket = graphql.getBucket("testuser", "tokens")
+graphql.deleteBucket("testuser", "tokens")
+```
+
 ### HeadlessBrowser
 
 An [HtmlUnit](https://www.htmlunit.org/)-based headless browser for interacting with web pages in
