@@ -25,9 +25,11 @@ import org.htmlunit.util.WebConnectionWrapper
 import org.jose4j.json.JsonUtil
 import org.slf4j.LoggerFactory
 
-import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 /**
  * A test OAuth client that uses a {@link HeadlessBrowser} to drive the
@@ -72,6 +74,7 @@ class TestOAuthClient implements Closeable {
     private final String tokenEndpointUrl
     private final String redirectUri
     private final String acrValues
+    private final HttpClient httpClient
     private String capturedCode
     private String capturedError
     private boolean flowComplete
@@ -87,6 +90,13 @@ class TestOAuthClient implements Closeable {
         this.tokenEndpointUrl = tokenEndpointUrl
         this.redirectUri = redirectUri
         this.acrValues = acrValues
+
+        def sslContext = SSLContext.getInstance("TLS")
+        sslContext.init(null, [new TrustAllTrustManager()] as TrustManager[], null)
+        this.httpClient = HttpClient.newBuilder()
+                .sslContext(sslContext)
+                .build()
+
         installRedirectInterceptor()
     }
 
@@ -201,25 +211,6 @@ class TestOAuthClient implements Closeable {
         return doTokenExchange(capturedCode)
     }
 
-    private HttpsURLConnection createPostConnection(String endpointUrl, String basicCredentials) {
-        def url = new URL(endpointUrl)
-        def connection = url.openConnection() as HttpsURLConnection
-
-        def sslContext = SSLContext.getInstance("TLS")
-        sslContext.init(null, [new TrustAllTrustManager()] as TrustManager[], null)
-        connection.setSSLSocketFactory(sslContext.socketFactory)
-        connection.setHostnameVerifier { host, session -> true }
-
-        connection.requestMethod = "POST"
-        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-        if (basicCredentials != null) {
-            connection.setRequestProperty("Authorization", "Basic ${basicCredentials}")
-        }
-        connection.doOutput = true
-
-        return connection
-    }
-
     private TokenResponse doTokenExchange(String code) {
         logger.info("Exchanging authorization code for tokens at {}", tokenEndpointUrl)
 
@@ -231,27 +222,22 @@ class TestOAuthClient implements Closeable {
                 "${clientId}:${clientSecret}".getBytes(StandardCharsets.UTF_8)
         )
 
-        def connection = createPostConnection(tokenEndpointUrl, credentials)
+        def request = HttpRequest.newBuilder()
+                .uri(URI.create(tokenEndpointUrl))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Authorization", "Basic ${credentials}")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build()
 
-        connection.outputStream.withCloseable { out ->
-            out.write(body.getBytes(StandardCharsets.UTF_8))
-        }
+        def response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
-        def responseCode = connection.responseCode
-        def responseStream = (responseCode >= 400 ? connection.errorStream : connection.inputStream)
-        def responseBody = responseStream.withCloseable { input ->
-            new InputStreamReader(input, StandardCharsets.UTF_8).withCloseable { reader ->
-                reader.text
-            }
-        }
-
-        if (responseCode != 200) {
+        if (response.statusCode() != 200) {
             throw new IllegalStateException(
-                    "Token exchange failed with status ${responseCode}: ${responseBody}"
+                    "Token exchange failed with status ${response.statusCode()}: ${response.body()}"
             )
         }
 
-        return TokenResponse.fromJson(responseBody)
+        return TokenResponse.fromJson(response.body())
     }
 
     /**
@@ -266,37 +252,26 @@ class TestOAuthClient implements Closeable {
 
         def body = "token=${URLEncoder.encode(accessToken, StandardCharsets.UTF_8)}"
 
-        def connection = new URL(introspectUrl).openConnection() as HttpsURLConnection
-
-        def sslContext = SSLContext.getInstance("TLS")
-        sslContext.init(null, [new TrustAllTrustManager()] as TrustManager[], null)
-        connection.setSSLSocketFactory(sslContext.socketFactory)
-        connection.setHostnameVerifier { host, session -> true }
-
         def credentials = Base64.encoder.encodeToString(
                 "${clientId}:${clientSecret}".getBytes(StandardCharsets.UTF_8)
         )
 
-        connection.requestMethod = "POST"
-        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-        connection.setRequestProperty("Authorization", "Basic ${credentials}")
-        connection.doOutput = true
+        def request = HttpRequest.newBuilder()
+                .uri(URI.create(introspectUrl))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Authorization", "Basic ${credentials}")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build()
 
-        connection.outputStream.withCloseable { out ->
-            out.write(body.getBytes(StandardCharsets.UTF_8))
-        }
+        def response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
-        def responseCode = connection.responseCode
-        def responseBody = (responseCode >= 400 ? connection.errorStream : connection.inputStream)
-                .withCloseable { inputStream -> new String(inputStream.bytes, StandardCharsets.UTF_8) }
-
-        if (responseCode != 200) {
+        if (response.statusCode() != 200) {
             throw new IllegalStateException(
-                    "Introspection failed with status ${responseCode}: ${responseBody}"
+                    "Introspection failed with status ${response.statusCode()}: ${response.body()}"
             )
         }
 
-        return JsonUtil.parseJson(responseBody)
+        return JsonUtil.parseJson(response.body())
     }
 
     private static String extractQueryParam(String url, String param) {
