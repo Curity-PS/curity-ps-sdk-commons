@@ -80,7 +80,7 @@ class IntrospectionAttributesTest extends Specification {
         attributes.scope == null
         attributes.clientId == null
         attributes.issuer == null
-        attributes.audiences == null
+        attributes.audiences == []
         attributes.tokenType == null
         attributes.expiration == null
     }
@@ -101,12 +101,12 @@ class IntrospectionAttributesTest extends Specification {
         attributes.audiences == ["aud1", "aud2", "aud3"]
     }
 
-    def "getAudiences returns null when aud is missing"() {
+    def "getAudiences returns empty list when aud is missing"() {
         given:
         def attributes = IntrospectionAttributes.fromMap(["active": true])
 
         expect:
-        attributes.audiences == null
+        attributes.audiences == []
     }
 
     def "Wrong type for string claim returns null"() {
