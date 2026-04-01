@@ -26,8 +26,12 @@ import se.curity.identityserver.sdk.service.Json;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * An opaque token validator that calls a token introspection endpoint (RFC 7662)
@@ -67,7 +71,7 @@ public final class AccessTokenValidator implements OpaqueTokenValidator
     }
 
     @Override
-    public IntrospectionAttributes validateToken(String token, String issuer, String audience) throws IntrospectionException
+    public IntrospectionAttributes validateToken(String token, String issuer, String audience, List<String> scopes) throws IntrospectionException
     {
         _logger.debug("Introspecting token at {}", _introspectionEndpoint);
 
@@ -96,6 +100,11 @@ public final class AccessTokenValidator implements OpaqueTokenValidator
         }
 
         String responseIssuer = attributes.getIssuer();
+        if (responseIssuer == null)
+        {
+            _logger.warn("Introspection response is missing required 'iss' claim");
+            throw new IntrospectionException("Introspection response is missing required 'iss' claim");
+        }
         if (!responseIssuer.equals(issuer))
         {
             _logger.warn("Issuer mismatch: expected '{}', got '{}'", issuer, responseIssuer);
@@ -103,7 +112,7 @@ public final class AccessTokenValidator implements OpaqueTokenValidator
         }
 
         var audiences = attributes.getAudiences();
-        if (audiences == null || audiences.isEmpty())
+        if (audiences.isEmpty())
         {
             _logger.warn("Introspection response is missing required 'aud' claim");
             throw new IntrospectionException("Introspection response is missing required 'aud' claim");
@@ -112,6 +121,23 @@ public final class AccessTokenValidator implements OpaqueTokenValidator
         {
             _logger.warn("Audience mismatch: expected '{}', got '{}'", audience, audiences);
             throw new IntrospectionException("Audience mismatch: expected '" + audience + "', got '" + audiences + "'");
+        }
+
+        if (scopes != null && !scopes.isEmpty())
+        {
+            String scopeString = attributes.getScope();
+            if (scopeString == null || scopeString.isBlank())
+            {
+                _logger.warn("Introspection response is missing required 'scope' claim");
+                throw new IntrospectionException("Introspection response is missing required 'scope' claim");
+            }
+            Set<String> responseScopes = new HashSet<>(Arrays.asList(scopeString.split(" ")));
+            List<String> missingScopes = scopes.stream().filter(s -> !responseScopes.contains(s)).toList();
+            if (!missingScopes.isEmpty())
+            {
+                _logger.warn("Scope mismatch: missing required scopes {}", missingScopes);
+                throw new IntrospectionException("Scope mismatch: missing required scopes " + missingScopes);
+            }
         }
 
         return attributes;

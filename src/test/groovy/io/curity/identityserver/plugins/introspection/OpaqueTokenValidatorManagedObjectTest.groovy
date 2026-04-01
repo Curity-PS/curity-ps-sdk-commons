@@ -56,7 +56,7 @@ class OpaqueTokenValidatorManagedObjectTest extends Specification {
         )
 
         when:
-        def attributes = client.validateToken(token, "https://issuer.example.com", "api.example.com")
+        def attributes = client.validateToken(token, "https://issuer.example.com", "api.example.com", ["read", "write"])
 
         then:
         attributes.isActive()
@@ -120,6 +120,20 @@ class OpaqueTokenValidatorManagedObjectTest extends Specification {
         thrown.message.contains("Audience mismatch")
     }
 
+    def "Should throw IntrospectionException when issuer is missing from introspection response"() {
+        given:
+        def responseWithoutIssuer = '{"active": true, "sub": "johndoe", "aud": "api.example.com"}'
+        def config = mockedConfiguration(mockedIntrospectionResponse(responseWithoutIssuer))
+        def validator = new OpaqueTokenValidatorManagedObject(config)
+
+        when:
+        validator.validate(token)
+
+        then:
+        def thrown = thrown(IntrospectionException)
+        thrown.message.contains("missing required 'iss' claim")
+    }
+
     def "Should throw IntrospectionException when audience is missing from introspection response"() {
         given:
         def responseWithoutAudience = '{"active": true, "sub": "johndoe", "iss": "https://issuer.example.com"}'
@@ -132,6 +146,49 @@ class OpaqueTokenValidatorManagedObjectTest extends Specification {
         then:
         def thrown = thrown(IntrospectionException)
         thrown.message.contains("missing required 'aud' claim")
+    }
+
+    def "Should throw IntrospectionException when required scopes are missing"() {
+        given:
+        def config = mockedConfiguration(mockedIntrospectionResponse(activeIntrospectionResponse),
+                "api.example.com", "https://issuer.example.com", ["read", "admin"])
+        def validator = new OpaqueTokenValidatorManagedObject(config)
+
+        when:
+        validator.validate(token)
+
+        then:
+        def thrown = thrown(IntrospectionException)
+        thrown.message.contains("Scope mismatch")
+        thrown.message.contains("admin")
+    }
+
+    def "Should throw IntrospectionException when scope claim is missing from introspection response"() {
+        given:
+        def responseWithoutScope = '{"active": true, "sub": "johndoe", "iss": "https://issuer.example.com", "aud": "api.example.com"}'
+        def config = mockedConfiguration(mockedIntrospectionResponse(responseWithoutScope),
+                "api.example.com", "https://issuer.example.com", ["read"])
+        def validator = new OpaqueTokenValidatorManagedObject(config)
+
+        when:
+        validator.validate(token)
+
+        then:
+        def thrown = thrown(IntrospectionException)
+        thrown.message.contains("missing required 'scope' claim")
+    }
+
+    def "Should pass validation when expected scopes list is empty"() {
+        given:
+        def config = mockedConfiguration(mockedIntrospectionResponse(activeIntrospectionResponse),
+                "api.example.com", "https://issuer.example.com", [])
+        def validator = new OpaqueTokenValidatorManagedObject(config)
+
+        when:
+        def attributes = validator.validate(token)
+
+        then:
+        attributes.subject != null
     }
 
     def "Should send correct request format to introspection endpoint"() {
@@ -171,7 +228,8 @@ class OpaqueTokenValidatorManagedObjectTest extends Specification {
 
     private OpaqueTokenValidatorConfiguration mockedConfiguration(HttpClient httpClient,
                                                                   String audience = "api.example.com",
-                                                                  String issuer = "https://issuer.example.com") {
+                                                                  String issuer = "https://issuer.example.com",
+                                                                  List<String> scopes = ["read", "write"]) {
         return Mock(OpaqueTokenValidatorConfiguration) {
             getIntrospectionEndpoint() >> URI.create("https://example.com/introspect")
             getClientId() >> "test-client"
@@ -180,6 +238,7 @@ class OpaqueTokenValidatorManagedObjectTest extends Specification {
             }
             getExpectedAudience() >> audience
             getExpectedIssuer() >> issuer
+            getExpectedScopes() >> scopes
             getHttpClient() >> httpClient
             getJson() >> new TestJson()
         }

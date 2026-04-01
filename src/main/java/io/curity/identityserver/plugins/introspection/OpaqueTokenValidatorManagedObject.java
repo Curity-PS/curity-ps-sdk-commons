@@ -78,8 +78,9 @@ public final class OpaqueTokenValidatorManagedObject<T extends Configuration> ex
      */
     public IntrospectionAttributes validate(String token) throws IntrospectionException
     {
-        _logger.debug("Validating opaque token with expected audience '{}' and expected issuer '{}'",
-                _configuration.getExpectedAudience(), _configuration.getExpectedIssuer());
-        return _validator.validateToken(token, _configuration.getExpectedIssuer(), _configuration.getExpectedAudience());
+        _logger.debug("Validating opaque token with expected audience '{}', expected issuer '{}', and expected scopes '{}'",
+                _configuration.getExpectedAudience(), _configuration.getExpectedIssuer(), _configuration.getExpectedScopes());
+        return _validator.validateToken(token, _configuration.getExpectedIssuer(), _configuration.getExpectedAudience(),
+                _configuration.getExpectedScopes());
     }
 }

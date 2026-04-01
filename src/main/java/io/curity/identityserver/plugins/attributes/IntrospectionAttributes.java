@@ -98,6 +98,7 @@ public final class IntrospectionAttributes extends Attributes
      *
      * @return issuer string
      */
+    @Nullable
     public String getIssuer()
     {
         return NullUtils.map(get("iss"), attribute -> attribute.getOptionalValueOfType(String.class));
@@ -107,13 +108,12 @@ public final class IntrospectionAttributes extends Attributes
      * Returns the values of the "aud" claim in the introspection response as a list.
      * Handles both a single string audience and a list of audiences.
      *
-     * @return list of audience strings, or null if not present
+     * @return list of audience strings, or an empty list if not present
      */
-    @Nullable
     @SuppressWarnings("unchecked")
     public List<String> getAudiences()
     {
-        return NullUtils.map(get("aud"), attribute -> {
+        List<String> result = NullUtils.map(get("aud"), attribute -> {
             List<String> list = attribute.getOptionalValueOfType(List.class);
             if (list != null)
             {
@@ -122,6 +122,7 @@ public final class IntrospectionAttributes extends Attributes
             String single = attribute.getOptionalValueOfType(String.class);
             return single != null ? List.of(single) : null;
         });
+        return result != null ? result : List.of();
     }
 
     /**

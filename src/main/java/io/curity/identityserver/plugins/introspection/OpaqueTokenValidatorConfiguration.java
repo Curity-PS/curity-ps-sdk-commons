@@ -24,6 +24,7 @@ import se.curity.identityserver.sdk.service.HttpClient;
 import se.curity.identityserver.sdk.service.Json;
 
 import java.net.URI;
+import java.util.List;
 
 /**
  * A configuration interface for opaque token validation via introspection (RFC 7662).
@@ -45,6 +46,9 @@ public interface OpaqueTokenValidatorConfiguration extends Configuration
 
     @Description("The expected issuer of the token to validate")
     String getExpectedIssuer();
+
+    @Description("The expected scopes that the token must contain")
+    List<String> getExpectedScopes();
 
     @DefaultService
     HttpClient getHttpClient();

@@ -18,23 +18,26 @@ package io.curity.identityserver.plugins.introspection;
 
 import io.curity.identityserver.plugins.attributes.IntrospectionAttributes;
 
+import java.util.List;
+
 /**
  * A simple interface for validating opaque access tokens via token introspection (RFC 7662).
  * The implementation calls the introspection endpoint to determine if the token is active
- * and to retrieve associated claims. The issuer and audience are validated against the
+ * and to retrieve associated claims. The issuer, audience, and scopes are validated against the
  * introspection response.
  */
 public interface OpaqueTokenValidator
 {
     /**
      * Validates an opaque access token by calling the introspection endpoint.
-     * Validates that the issuer and audience in the introspection response match the expected values.
+     * Validates that the issuer, audience, and scopes in the introspection response match the expected values.
      *
      * @param token    the opaque access token to validate
      * @param issuer   String that has to match the {@code iss} claim of the introspection response
      * @param audience String that has to be in the {@code aud} claim of the introspection response
+     * @param scopes   List of scopes that must all be present in the {@code scope} claim of the introspection response
      * @return the introspection response attributes if the token is active
-     * @throws IntrospectionException if the token is not active, issuer/audience don't match, or the introspection call fails
+     * @throws IntrospectionException if the token is not active, issuer/audience/scopes don't match, or the introspection call fails
      */
-    IntrospectionAttributes validateToken(String token, String issuer, String audience) throws IntrospectionException;
+    IntrospectionAttributes validateToken(String token, String issuer, String audience, List<String> scopes) throws IntrospectionException;
 }
