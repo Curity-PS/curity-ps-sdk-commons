@@ -8,6 +8,9 @@ target/
 *.tgz
 *.tgz.asc
 
+# VS Code
+.vscode/
+
 # Intellij
 .idea/
 !.idea/copyright/

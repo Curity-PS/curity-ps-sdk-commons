@@ -25,6 +25,8 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 
+import static io.curity.identityserver.test.utils.constants.TestConstants.GraphQL.*
+
 /**
  * A test client for the Curity Identity Server's User Management GraphQL API.
  *
@@ -34,14 +36,13 @@ import java.net.http.HttpResponse
  *
  * <h3>Usage</h3>
  * <pre>
- * def oauth = TestOAuthClient.clientCredentialsClient("graphql-admin", "secret", tokenUrl, "um-admin")
- * def graphql = new GraphQLClient(graphqlUrl, oauth)
+ * def graphql = new GraphQLClient(graphqlUrl, tokenUrl)
  *
  * def result = graphql.query("query { accounts { edges { node { id } } } }")
  * def bucket = graphql.getBucket("testuser", "tokens")
  * </pre>
  */
-class GraphQLClient {
+class GraphQLClient implements Closeable {
 
     private final String graphqlUrl
     private final HttpClient httpClient
@@ -50,11 +51,12 @@ class GraphQLClient {
 
     /**
      * @param graphqlUrl the URL of the GraphQL endpoint
-     * @param oauthClient an OAuth client configured for the client credentials grant
+     * @param tokenEndpointUrl the token endpoint URL for client credentials authentication
      */
-    GraphQLClient(String graphqlUrl, TestOAuthClient oauthClient) {
+    GraphQLClient(String graphqlUrl, String tokenEndpointUrl) {
         this.graphqlUrl = graphqlUrl
-        this.oauthClient = oauthClient
+        this.oauthClient = TestOAuthClient.clientCredentialsClient(CLIENT_ID, CLIENT_SECRET,
+            tokenEndpointUrl, ADMIN_SCOPE)
 
         def sslContext = SSLContext.getInstance("TLS")
         sslContext.init(null, [new TrustAllTrustManager()] as TrustManager[], null)
@@ -91,9 +93,14 @@ class GraphQLClient {
 
         def response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
         if (response.statusCode() != 200) {
-            throw new RuntimeException("GraphQL request failed: ${response.body()}")
+            throw new RuntimeException("GraphQL request failed with status ${response.statusCode()}: ${response.body()}")
         }
-        return JsonUtil.parseJson(response.body())
+        def parsed = JsonUtil.parseJson(response.body())
+        if (parsed.errors) {
+            def messages = (parsed.errors as List).collect { (it as Map).message }.join("; ")
+            throw new RuntimeException("GraphQL errors: ${messages}")
+        }
+        return parsed
     }
 
     /**
@@ -101,19 +108,17 @@ class GraphQLClient {
      *
      * @param userName the account user name
      * @param purpose the bucket purpose (e.g. {@code "tokens"})
-     * @return the bucket as a map containing an {@code attributes} key
+     * @return the bucket as a map containing an {@code attributes} key, or an empty map if no buckets are found
      */
     Map getBucket(String userName, String purpose) {
-        def query = """query ssoBuckets {
-          bucketsByUserName(userName: "${userName}", purposes: "${purpose}") {
-              attributes
-          }
-        }"""
-        def result = query(query)
-        def buckets = result.data?.bucketsByUserName
-        assert buckets instanceof List
-        assert buckets.size() == 1
-        return buckets.first() as Map
+        def gql = '''
+            query ssoBuckets($userName: String!, $purposes: [String!]!) {
+                bucketsByUserName(userName: $userName, purposes: $purposes) {
+                    attributes
+                }
+            }'''
+        def result = query(gql, [userName: userName, purposes: [purpose]])
+        return getFirstBucketOrEmpty(result, "bucketsByUserName")
     }
 
     /**
@@ -121,14 +126,50 @@ class GraphQLClient {
      *
      * @param userName the account user name
      * @param purpose the bucket purpose
+     * @return {@code true} if the bucket was deleted
      */
-    void deleteBucket(String userName, String purpose) {
-        def deleteQuery = """mutation deleteSsoBucket {
-          deleteBucketByUserName(input: {userName: "${userName}", purpose: "${purpose}"}) {
-            deleted
-          }
-        }"""
-        def result = query(deleteQuery)
-        assert result != null
+    boolean deleteBucket(String userName, String purpose) {
+        def gql = '''
+            mutation deleteSsoBucket($input: DeleteBucketByUserNameInput!) {
+                deleteBucketByUserName(input: $input) {
+                    deleted
+                }
+            }'''
+        def result = query(gql, [input: [userName: userName, purpose: purpose]])
+        return result.data?.deleteBucketByUserName?.deleted == true
     }
+
+    /**
+     * Create or update an SSO bucket for a user.
+     *
+     * @param userName the account user name
+     * @param purpose the bucket purpose
+     * @param attributes the bucket attributes to store
+     * @return {@code true} if the bucket was stored successfully
+     */
+    boolean storeBucket(String userName, String purpose, Map attributes) {
+        def gql = '''
+            mutation storeSsoBucket($input: StoreBucketByUserNameInput!) {
+                storeBucketByUserName(input: $input) {
+                    stored
+                }
+            }'''
+        def result = query(gql, [input: [userName: userName, purpose: purpose, attributes: attributes]])
+        return result.data?.storeBucketByUserName?.stored == true
+    }
+
+    @Override
+    void close() {
+        oauthClient.close()
+    }
+
+    private static Map getFirstBucketOrEmpty(Map<String, Object> result, String queryName) {
+        def buckets = result.data?[queryName]
+        if (!(buckets instanceof List) || buckets.isEmpty()) {
+            return Map.of()
+        }
+
+        return buckets.first() as Map
+    }
+
 }

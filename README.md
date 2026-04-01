@@ -184,11 +184,10 @@ the client credentials grant via a `TestOAuthClient` and lazily fetches an acces
 request, reusing it for all subsequent calls.
 
 ```groovy
-def oauth = TestOAuthClient.clientCredentialsClient(
-    "graphql-admin", "admin-secret",
-    container.tokenEndpointUrl, "um-admin"
+def graphql = new GraphQLClient(
+    container.runtimeUrl + "/graph",
+    container.tokenEndpointUrl
 )
-def graphql = new GraphQLClient(container.runtimeUrl + "/graph", oauth)
 ```
 
 Execute arbitrary queries or mutations:
@@ -200,6 +199,7 @@ def result = graphql.query("query { accounts { edges { node { id userName } } } 
 Convenience methods are provided for SSO bucket operations:
 
 ```groovy
+graphql.storeBucket("testuser", "tokens", [sessionId: "abc123"])
 def bucket = graphql.getBucket("testuser", "tokens")
 graphql.deleteBucket("testuser", "tokens")
 ```

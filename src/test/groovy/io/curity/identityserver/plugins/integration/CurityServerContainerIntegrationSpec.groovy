@@ -14,23 +14,27 @@
  * limitations under the License.
  */
 
-package io.curity.identityserver.plugins.utils
+package io.curity.identityserver.plugins.integration
 
 import io.curity.identityserver.test.utils.CurityServerContainer
+import spock.lang.Shared
 import spock.lang.Specification
 
-class CurityServerContainerSpecification extends Specification {
-    def "A Curity container can be started with base config for integration test purposes"() {
-        given: "A container is created"
-        def container = CurityServerContainer.withVersion("11.0")
+abstract class CurityServerContainerIntegrationSpec extends Specification {
+    @Shared
+    CurityServerContainer container
 
-        when: "The container is started"
+    def setupSpec() {
+        container = CurityServerContainer.withVersion("11.1")
         container.start()
+    }
 
-        then: "It is running"
+    def "A Curity container can be started with base config for integration test purposes"() {
+        expect: "It is running"
         container.isRunning()
+    }
 
-        cleanup:
+    def cleanupSpec() {
         container?.close()
     }
 }

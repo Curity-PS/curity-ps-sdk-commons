@@ -3,7 +3,7 @@ plugins {
     id 'groovy'
     id 'java-test-fixtures'
     id 'maven-publish'
-    id "io.curity.gradle.curity-plugin-dev" version "0.3.0"
+    id "io.curity.gradle.curity-plugin-dev" version "0.5.0"
 }
 
 group = 'io.curity'

@@ -33,6 +33,7 @@
           <endpoints>token-service-session</endpoints>
           <endpoints>token-service-token</endpoints>
           <endpoints>token-service-userinfo</endpoints>
+          <endpoints>um-graph</endpoints>
         </service-role>
       </services>
     </environment>
@@ -107,7 +108,7 @@
                 </capabilities>
               </client>
               <client>
-                <id>grapql-admin</id>
+                <id>graphql-admin</id>
                 <secret>$5$Xa5whAuzFvmOeDe7$esKpjvfqur7rT9qtdptnRbH2LdzBEAZBlLo1PCHnBS4</secret>
                 <scope>um-admin</scope>
                 <capabilities>
@@ -155,6 +156,10 @@
               <claims>updated_at</claims>
               <claims>website</claims>
               <claims>zoneinfo</claims>
+            </scope>
+            <scope>
+              <id>um-admin</id>
+              <claims>groups</claims>
             </scope>
           </scopes>
           <claims>
@@ -256,8 +261,7 @@
             <claim>
               <name>groups</name>
               <transformation>
-                <value-transformation-procedure>ZnVuY3Rpb24gZ2VuZXJhdGUoKSB7CiAgICByZXR1cm4gWyJhZG1pbiJdOwp9
-                </value-transformation-procedure>
+                <value-transformation-procedure>ZnVuY3Rpb24gZ2VuZXJhdGUoKSB7CiAgICByZXR1cm4gWyJhZG1pbiJdOwp9</value-transformation-procedure>
               </transformation>
             </claim>
             <claims-value-provider>
@@ -471,6 +475,22 @@
         </data-source-backed>
       </credential-manager>
     </credential-managers>
+    <authorization-managers>
+      <authorization-manager>
+        <id>group-authz</id>
+        <groups xmlns="https://curity.se/ns/conf/authorization-manager/group">
+          <group>
+            <name>admin</name>
+            <allows>
+              <create/>
+              <read/>
+              <update/>
+              <delete/>
+            </allows>
+          </group>
+        </groups>
+      </authorization-manager>
+    </authorization-managers>
   </processing>
   <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
     <write-default>permit</write-default>

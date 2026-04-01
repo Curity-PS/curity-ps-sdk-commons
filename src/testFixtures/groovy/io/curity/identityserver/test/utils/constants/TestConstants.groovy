@@ -17,7 +17,7 @@
 package io.curity.identityserver.test.utils.constants
 
 /**
- * Containing constants matching configuration
+ * Test constants that match the pre-configured clients and endpoints in base-config.xml.
  */
 class TestConstants {
     /**
@@ -27,6 +27,7 @@ class TestConstants {
         public static final String CLIENT_ID = "graphql-admin"
         public static final String CLIENT_SECRET = "integration-test-secret"
         public static final String ADMIN_SCOPE = "um-admin"
+        public static final String UM_ENDPOINT = "/graph"
     }
 
     /**

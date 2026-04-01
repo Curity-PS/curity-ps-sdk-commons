@@ -62,9 +62,15 @@ import java.nio.charset.StandardCharsets
 class TestOAuthClient implements Closeable {
 
     private static final def logger = LoggerFactory.getLogger(TestOAuthClient.class)
-    private static final String DEFAULT_REDIRECT_URI = TestConstants.CodeFlow.REDIRECT_URI
-    private static final String DEFAULT_CLIENT_ID = TestConstants.CodeFlow.CLIENT_ID
-    private static final String DEFAULT_CLIENT_SECRET = TestConstants.CodeFlow.CLIENT_SECRET
+    /** @deprecated Use {@link io.curity.identityserver.test.utils.constants.TestConstants.CodeFlow#REDIRECT_URI} */
+    @Deprecated
+    public static final String DEFAULT_REDIRECT_URI = TestConstants.CodeFlow.REDIRECT_URI
+    /** @deprecated Use {@link io.curity.identityserver.test.utils.constants.TestConstants.CodeFlow#CLIENT_ID} */
+    @Deprecated
+    public static final String DEFAULT_CLIENT_ID = TestConstants.CodeFlow.CLIENT_ID
+    /** @deprecated Use {@link io.curity.identityserver.test.utils.constants.TestConstants.CodeFlow#CLIENT_SECRET} */
+    @Deprecated
+    public static final String DEFAULT_CLIENT_SECRET = TestConstants.CodeFlow.CLIENT_SECRET
     private static final String DEFAULT_SCOPE = ""
 
     private final HeadlessBrowser browser
