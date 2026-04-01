@@ -53,12 +53,7 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
      */
     public OpenIdDiscoveryManagedObject(T configuration, OpenIdDiscoveryConfiguration openIdDiscoveryConfiguration)
     {
-        super(configuration);
-        _openIdDiscoveryConfiguration = openIdDiscoveryConfiguration;
-        HttpClient httpClient = openIdDiscoveryConfiguration.getHttpClient();
-        _discoveredConfiguration = fetchProviderConfiguration(openIdDiscoveryConfiguration.getIssuer(), httpClient);
-        _jwtValidator = new JwksUriJwtValidator(URI.create(getConfiguredString("jwks_uri")), httpClient);
-        _opaqueTokenValidator = null;
+        this(configuration, openIdDiscoveryConfiguration, null, null);
     }
 
     /**
@@ -70,18 +65,17 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
      * @param clientSecret                 the client secret for authenticating to the introspection endpoint
      */
     public OpenIdDiscoveryManagedObject(T configuration, OpenIdDiscoveryConfiguration openIdDiscoveryConfiguration,
-                                        String clientId, String clientSecret)
+                                        @Nullable String clientId, @Nullable String clientSecret)
     {
         super(configuration);
         _openIdDiscoveryConfiguration = openIdDiscoveryConfiguration;
         HttpClient httpClient = openIdDiscoveryConfiguration.getHttpClient();
         _discoveredConfiguration = fetchProviderConfiguration(openIdDiscoveryConfiguration.getIssuer(), httpClient);
         _jwtValidator = new JwksUriJwtValidator(URI.create(getConfiguredString("jwks_uri")), httpClient);
-        _opaqueTokenValidator = new AccessTokenValidator(getTokenIntrospectionEndpoint(), httpClient,
-                openIdDiscoveryConfiguration.getJson(),
-                clientId,
-                clientSecret
-        );
+        _opaqueTokenValidator = clientId != null && clientSecret != null
+                ? new AccessTokenValidator(getTokenIntrospectionEndpoint(), httpClient,
+                        openIdDiscoveryConfiguration.getJson(), clientId, clientSecret)
+                : null;
     }
 
     private Map<String, Object> fetchProviderConfiguration(URI issuer, HttpClient httpClient)

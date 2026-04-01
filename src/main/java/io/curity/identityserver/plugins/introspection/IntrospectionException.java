@@ -19,7 +19,7 @@ package io.curity.identityserver.plugins.introspection;
 /**
  * Exception thrown when token introspection fails.
  */
-public final class IntrospectionException extends RuntimeException
+public final class IntrospectionException extends Exception
 {
     /**
      * Constructs a new IntrospectionException with a message.

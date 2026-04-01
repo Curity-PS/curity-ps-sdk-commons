@@ -16,9 +16,9 @@
 
 package io.curity.identityserver.plugins.introspection;
 
+import io.curity.identityserver.plugins.attributes.IntrospectionAttributes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.curity.identityserver.sdk.attribute.Attributes;
 import se.curity.identityserver.sdk.config.Configuration;
 import se.curity.identityserver.sdk.plugin.ManagedObject;
 
@@ -76,9 +76,9 @@ public final class OpaqueTokenValidatorManagedObject<T extends Configuration> ex
      * @param token the token to validate
      * @return Map of the claims from the introspection response
      */
-    public Attributes validate(String token)
+    public IntrospectionAttributes validate(String token) throws IntrospectionException
     {
-        _logger.debug("Validating opaque token with expected audience '{}' and issuer '{}'",
+        _logger.debug("Validating opaque token with expected audience '{}' and expected issuer '{}'",
                 _configuration.getExpectedAudience(), _configuration.getExpectedIssuer());
         return _validator.validateToken(token, _configuration.getExpectedIssuer(), _configuration.getExpectedAudience());
     }
