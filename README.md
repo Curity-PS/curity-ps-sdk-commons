@@ -132,6 +132,25 @@ def client = TestOAuthClient.defaultClient(
 )
 ```
 
+Request a specific scope and acr value to select an authenticator and control which scopes are issued:
+
+```groovy
+def client = TestOAuthClient.defaultClient(
+    browser,
+    container.authorizationEndpointUrl,
+    container.tokenEndpointUrl,
+    "urn:se:curity:authentication:html-form:my-authenticator",
+    "openid profile"
+)
+```
+
+You can also override scope and acr values per flow, for example to test different authenticators
+with the same client:
+
+```groovy
+client.codeFlow("openid email", "urn:se:curity:authentication:html-form:other-authenticator")
+```
+
 Run the authorization code flow. After `codeFlow()`, the browser is on the authentication page where
 you can interact with form fields. Example Spock test:
 
