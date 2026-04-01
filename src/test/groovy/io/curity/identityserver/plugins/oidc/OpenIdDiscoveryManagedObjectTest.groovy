@@ -71,13 +71,45 @@ class OpenIdDiscoveryManagedObjectTest extends Specification {
         "mtls_endpoint_aliases"           | Map.class     | ["token_endpoint": discoveryMetadataMap.token_endpoint]
     }
 
+    def "Test that the managed object is able to parse the introspection endpoint from a given metadata doc"() {
+        given:
+        def openIdDiscoveryConfiguration = validConfigurationMock(issuerUri)
+        def managedObject = new OpenIdDiscoveryManagedObject(Mock(Configuration), openIdDiscoveryConfiguration)
+
+        when:
+        def introspectionEndpoint = managedObject.getTokenIntrospectionEndpoint()
+
+        then:
+        introspectionEndpoint.toString() == discoveryMetadataMap.introspection_endpoint
+    }
+
+    def "Opaque token validator is null when created without client credentials"() {
+        given:
+        def openIdDiscoveryConfiguration = validConfigurationMock(issuerUri)
+        def managedObject = new OpenIdDiscoveryManagedObject(Mock(Configuration), openIdDiscoveryConfiguration)
+
+        expect:
+        managedObject.getOpaqueTokenValidator() == null
+    }
+
+    def "Opaque token validator is created when client credentials are provided"() {
+        given:
+        def openIdDiscoveryConfiguration = validConfigurationMock(issuerUri)
+        def managedObject = new OpenIdDiscoveryManagedObject(Mock(Configuration), openIdDiscoveryConfiguration,
+                "my-client-id", "my-client-secret")
+
+        expect:
+        managedObject.getOpaqueTokenValidator() != null
+    }
+
     private OpenIdDiscoveryConfiguration validConfigurationMock(URI issuerUri) {
+        def httpClient = mockedHttpClientResponseForUri(
+                URI.create(issuerUri.toString() + '/.well-known/openid-configuration'),
+                discoveryMetadataMap)
         return Mock(OpenIdDiscoveryConfiguration) {
-            1 * getIssuer() >> issuerUri
-            1 * getJson() >> new TestJson()
-            1 * getHttpClient() >>
-                    mockedHttpClientResponseForUri(URI.create(issuerUri.toString() + '/.well-known/openid-configuration'),
-                            discoveryMetadataMap)
+            getIssuer() >> issuerUri
+            getJson() >> new TestJson()
+            getHttpClient() >> httpClient
         }
     }
 
