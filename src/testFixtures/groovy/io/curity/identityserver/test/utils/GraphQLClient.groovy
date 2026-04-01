@@ -16,11 +16,9 @@
 
 package io.curity.identityserver.test.utils
 
-import io.curity.identityserver.test.utils.crypto.TrustAllTrustManager
+import io.curity.identityserver.test.utils.crypto.InsecureSslContext
 import org.jose4j.json.JsonUtil
 
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -58,11 +56,8 @@ class GraphQLClient implements Closeable {
         this.oauthClient = TestOAuthClient.clientCredentialsClient(CLIENT_ID, CLIENT_SECRET,
             tokenEndpointUrl, ADMIN_SCOPE)
 
-        def sslContext = SSLContext.getInstance("TLS")
-        sslContext.init(null, [new TrustAllTrustManager()] as TrustManager[], null)
-
         this.httpClient = HttpClient.newBuilder()
-            .sslContext(sslContext)
+            .sslContext(InsecureSslContext.instance)
             .build()
     }
 
@@ -161,6 +156,7 @@ class GraphQLClient implements Closeable {
     @Override
     void close() {
         oauthClient.close()
+        httpClient.close()
     }
 
     private static Map getFirstBucketOrEmpty(Map<String, Object> result, String queryName) {

@@ -17,7 +17,7 @@
 package io.curity.identityserver.test.utils
 
 import io.curity.identityserver.test.utils.constants.TestConstants
-import io.curity.identityserver.test.utils.crypto.TrustAllTrustManager
+import io.curity.identityserver.test.utils.crypto.InsecureSslContext
 import org.htmlunit.WebRequest
 import org.htmlunit.WebResponse
 import org.htmlunit.WebResponseData
@@ -26,8 +26,6 @@ import org.htmlunit.util.WebConnectionWrapper
 import org.jose4j.json.JsonUtil
 import org.slf4j.LoggerFactory
 
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -98,10 +96,8 @@ class TestOAuthClient implements Closeable {
         this.redirectUri = redirectUri
         this.acrValues = acrValues
 
-        def sslContext = SSLContext.getInstance("TLS")
-        sslContext.init(null, [new TrustAllTrustManager()] as TrustManager[], null)
         this.httpClient = HttpClient.newBuilder()
-                .sslContext(sslContext)
+                .sslContext(InsecureSslContext.instance)
                 .build()
 
         if (browser != null) {
@@ -344,9 +340,8 @@ class TestOAuthClient implements Closeable {
 
     @Override
     void close() {
-        if (browser != null) {
-            browser.close()
-        }
+        browser?.close()
+        httpClient?.close()
     }
 
     /**

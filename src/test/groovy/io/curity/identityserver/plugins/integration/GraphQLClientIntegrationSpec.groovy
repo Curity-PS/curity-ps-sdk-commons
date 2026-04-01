@@ -31,6 +31,10 @@ class GraphQLClientIntegrationSpec extends CurityServerContainerIntegrationSpec 
             container.tokenEndpointUrl)
     }
 
+    def cleanupSpec() {
+        client?.close()
+    }
+
     def "client is able to query a non-existing bucket"() {
         when: "querying for a bucket that does not exist"
         def result = client.getBucket("foo", "bar")
