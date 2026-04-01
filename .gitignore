@@ -17,6 +17,7 @@ target/
 !.idea/copyright/*.xml
 *.iml
 *.iws
+bin/
 
 # Logs
 *.log
@@ -39,6 +40,9 @@ pom.xml.versionsBackup
 /previewer/
 
 **/build/
+
+.gradle/
+.env
 
 # Claude Code
 .claude/

@@ -247,3 +247,108 @@ For mTLS authentication, supply a keystore:
 def keystoreUrl = new File("src/test/resources/client.p12").toURI().toURL()
 def browser = HeadlessBrowser.create(keystoreUrl, "changeit")
 ```
+
+## Library Utilities
+
+### JWT Validation
+
+The library provides utilities for validating JWT tokens with support for two key resolution strategies:
+JWKS URI and configured verification key.
+
+#### Standalone usage with `JwtValidatorManagedObject`
+
+Add `JwtValidatorConfiguration` to your plugin's configuration interface, then create a
+managed object in your plugin descriptor:
+
+```java
+public interface MyPluginConfiguration extends Configuration {
+    JwtValidatorConfiguration getJwtValidatorConfig();
+}
+```
+
+Use the managed object to validate tokens:
+
+```java
+var managedObject = new JwtValidatorManagedObject<>(config, config.getJwtValidatorConfig());
+ValidatedJwtAttributes attributes = managedObject.validate(jwtToken);
+String subject = attributes.getSubject();
+String scope = attributes.getScope();
+```
+
+The key resolution strategy is configured via the `KeyResolverConfiguration` OneOf, which supports either:
+- **JWKS URI** — resolves keys dynamically from a JWKS endpoint (requires an `HttpClient` and the JWKS URI)
+- **Verification Crypto Store** — uses a statically configured asymmetric verification key
+
+#### Usage via `OpenIdDiscoveryManagedObject`
+
+If you use `OpenIdDiscoveryManagedObject`, a `JwtValidator` is automatically configured using the
+`jwks_uri` from the discovered provider metadata:
+
+```java
+var discovery = new OpenIdDiscoveryManagedObject<>(config, discoveryConfig);
+JwtValidator validator = discovery.getJwtValidator();
+ValidatedJwtAttributes attributes = validator.validateJwt(jwtToken, expectedIssuer, expectedAudience);
+```
+
+You can optionally exclude specific claims from the validated result:
+
+```java
+var attributes = validator.validateJwt(jwtToken, issuer, audience, Set.of("nbf", "iat"));
+```
+
+#### `ValidatedJwtAttributes`
+
+A typed wrapper over the validated JWT claims map with null-safe getters:
+
+- `getSubject()` — the `sub` claim
+- `getScope()` — the `scope` claim
+- `getAudience()` — the `aud` claim
+- `getIssuer()` — the `iss` claim
+
+### Opaque Token Validation (RFC 7662)
+
+The library provides utilities for validating opaque access tokens via token introspection.
+
+#### Standalone usage with `OpaqueTokenValidatorManagedObject`
+
+Add `OpaqueTokenValidatorConfiguration` to your plugin's configuration interface, then create a
+managed object in your plugin descriptor:
+
+```java
+public interface MyPluginConfiguration extends Configuration {
+    OpaqueTokenValidatorConfiguration getIntrospectionConfig();
+}
+```
+
+Use the managed object to validate tokens:
+
+```java
+var managedObject = new OpaqueTokenValidatorManagedObject<>(config, config.getIntrospectionConfig());
+IntrospectionAttributes attributes = managedObject.validate(opaqueToken);
+String subject = attributes.getSubject();
+String scope = attributes.getScope();
+```
+
+#### Usage via `OpenIdDiscoveryManagedObject`
+
+If you already use `OpenIdDiscoveryManagedObject`, pass client credentials to the constructor to
+automatically configure an opaque token validator using the discovered introspection endpoint:
+
+```java
+var discovery = new OpenIdDiscoveryManagedObject<>(config, discoveryConfig, clientId, clientSecret);
+OpaqueTokenValidator validator = discovery.getOpaqueTokenValidator();
+IntrospectionAttributes attributes = validator.validateToken(token, expectedIssuer, expectedAudience);
+```
+
+#### `IntrospectionAttributes`
+
+A typed wrapper over the introspection response map with null-safe getters:
+
+- `isActive()` — whether the token is active
+- `getSubject()` — the `sub` claim
+- `getScope()` — the `scope` claim
+- `getClientId()` — the `client_id` claim
+- `getIssuer()` — the `iss` claim
+- `getAudiences()` — the `aud` claim as a list (handles both string and array formats)
+- `getTokenType()` — the `token_type` claim
+- `getExpiration()` — the `exp` claim

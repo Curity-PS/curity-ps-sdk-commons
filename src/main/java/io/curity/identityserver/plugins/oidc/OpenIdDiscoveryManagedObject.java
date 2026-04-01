@@ -16,10 +16,13 @@
 
 package io.curity.identityserver.plugins.oidc;
 
+import io.curity.identityserver.plugins.introspection.AccessTokenValidator;
+import io.curity.identityserver.plugins.introspection.OpaqueTokenValidator;
 import io.curity.identityserver.plugins.jwt.JwksUriJwtValidator;
 import io.curity.identityserver.plugins.jwt.JwtValidator;
 import io.curity.identityserver.plugins.utils.NullUtils;
 import io.curity.identityserver.plugins.utils.UriHelper;
+import se.curity.identityserver.sdk.Nullable;
 import se.curity.identityserver.sdk.config.Configuration;
 import se.curity.identityserver.sdk.http.HttpResponse;
 import se.curity.identityserver.sdk.plugin.ManagedObject;
@@ -39,6 +42,8 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
     private final Map<String, Object> _discoveredConfiguration;
     private final OpenIdDiscoveryConfiguration _openIdDiscoveryConfiguration;
     private final JwksUriJwtValidator _jwtValidator;
+    @Nullable
+    private final OpaqueTokenValidator _opaqueTokenValidator;
 
     /**
      * Main constructor for the managed object
@@ -48,11 +53,29 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
      */
     public OpenIdDiscoveryManagedObject(T configuration, OpenIdDiscoveryConfiguration openIdDiscoveryConfiguration)
     {
+        this(configuration, openIdDiscoveryConfiguration, null, null);
+    }
+
+    /**
+     * Constructor that also creates an opaque token validator using the discovered introspection endpoint
+     *
+     * @param configuration                plugin config
+     * @param openIdDiscoveryConfiguration Configuration for the discovery fetcher
+     * @param clientId                     the client ID for authenticating to the introspection endpoint
+     * @param clientSecret                 the client secret for authenticating to the introspection endpoint
+     */
+    public OpenIdDiscoveryManagedObject(T configuration, OpenIdDiscoveryConfiguration openIdDiscoveryConfiguration,
+                                        @Nullable String clientId, @Nullable String clientSecret)
+    {
         super(configuration);
         _openIdDiscoveryConfiguration = openIdDiscoveryConfiguration;
         HttpClient httpClient = openIdDiscoveryConfiguration.getHttpClient();
         _discoveredConfiguration = fetchProviderConfiguration(openIdDiscoveryConfiguration.getIssuer(), httpClient);
         _jwtValidator = new JwksUriJwtValidator(URI.create(getConfiguredString("jwks_uri")), httpClient);
+        _opaqueTokenValidator = clientId != null && clientSecret != null
+                ? new AccessTokenValidator(getTokenIntrospectionEndpoint(), httpClient,
+                        openIdDiscoveryConfiguration.getJson(), clientId, clientSecret)
+                : null;
     }
 
     private Map<String, Object> fetchProviderConfiguration(URI issuer, HttpClient httpClient)
@@ -95,6 +118,16 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
     }
 
     /**
+     * Get the token introspection endpoint URI from the provider metadata
+     *
+     * @return the token introspection endpoint URI
+     */
+    public URI getTokenIntrospectionEndpoint()
+    {
+        return URI.create(getConfiguredString("introspection_endpoint"));
+    }
+
+    /**
      * Get the authorization endpoint URI from the provider metadata
      *
      * @return the authorization endpoint URI
@@ -122,6 +155,18 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
     public JwtValidator getJwtValidator()
     {
         return _jwtValidator;
+    }
+
+    /**
+     * Get the opaque token validator, configured with the introspection endpoint from the provider metadata.
+     * Only available when the managed object was created with client credentials.
+     *
+     * @return the opaque token validator, or null if client credentials were not provided
+     */
+    @Nullable
+    public OpaqueTokenValidator getOpaqueTokenValidator()
+    {
+        return _opaqueTokenValidator;
     }
 
     /**
