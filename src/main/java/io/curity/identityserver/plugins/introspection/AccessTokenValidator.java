@@ -87,14 +87,13 @@ public final class AccessTokenValidator implements OpaqueTokenValidator
 
         Map<String, Object> responseBody = _json.fromJson(response.body(HttpResponse.asString()));
 
-        Object active = responseBody.get("active");
-        if (!(active instanceof Boolean) || !(Boolean) active)
+        IntrospectionAttributes attributes = IntrospectionAttributes.fromMap(responseBody);
+
+        if (!attributes.isActive())
         {
             _logger.debug("Token is not active");
             throw new IntrospectionException("Token is not active");
         }
-
-        IntrospectionAttributes attributes = IntrospectionAttributes.fromMap(responseBody);
 
         String responseIssuer = attributes.getIssuer();
         if (!responseIssuer.equals(issuer))

@@ -40,7 +40,7 @@ class OpaqueTokenValidatorManagedObjectTest extends Specification {
         def attributes = validator.validate(token)
 
         then:
-        attributes.sub != null
+        attributes.subject != null
     }
 
     def "Should return correct claims from introspection response"() {
@@ -120,7 +120,6 @@ class OpaqueTokenValidatorManagedObjectTest extends Specification {
         thrown.message.contains("Audience mismatch")
     }
 
-    
     def "Should throw IntrospectionException when audience is missing from introspection response"() {
         given:
         def responseWithoutAudience = '{"active": true, "sub": "johndoe", "iss": "https://issuer.example.com"}'

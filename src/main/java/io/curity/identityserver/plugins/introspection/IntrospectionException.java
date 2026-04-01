@@ -34,10 +34,10 @@ public final class IntrospectionException extends Exception
     /**
      * Constructs a new IntrospectionException with the cause of the exception.
      *
-     * @param e the cause of the exception
+     * @param cause the cause of the exception
      */
-    public IntrospectionException(Exception e)
+    public IntrospectionException(Throwable cause)
     {
-        super(e);
+        super(cause);
     }
 }
