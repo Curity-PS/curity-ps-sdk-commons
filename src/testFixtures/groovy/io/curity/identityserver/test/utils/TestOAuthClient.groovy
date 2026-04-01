@@ -127,6 +127,7 @@ class TestOAuthClient implements Closeable {
      * Uses client ID {@code integration-test-client}, client secret
      * {@code integration-test-secret}, and empty scope.
      *
+     * @param browser a headless browser to run the authorization request in
      * @param authorizeEndpointUrl the authorization endpoint URL
      * @param tokenEndpointUrl the token endpoint URL
      * @param acrValues optional acr_values parameter for the authorization request
