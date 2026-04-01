@@ -16,7 +16,8 @@
 
 package io.curity.identityserver.test.utils
 
-import io.curity.identityserver.test.utils.crypto.TrustAllTrustManager
+import io.curity.identityserver.test.utils.constants.TestConstants
+import io.curity.identityserver.test.utils.crypto.InsecureSslContext
 import org.htmlunit.WebRequest
 import org.htmlunit.WebResponse
 import org.htmlunit.WebResponseData
@@ -25,9 +26,9 @@ import org.htmlunit.util.WebConnectionWrapper
 import org.jose4j.json.JsonUtil
 import org.slf4j.LoggerFactory
 
-import javax.net.ssl.HttpsURLConnection
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 /**
  * A test OAuth client that uses a {@link HeadlessBrowser} to drive the
@@ -59,9 +60,9 @@ import java.nio.charset.StandardCharsets
 class TestOAuthClient implements Closeable {
 
     private static final def logger = LoggerFactory.getLogger(TestOAuthClient.class)
-    public static final String DEFAULT_REDIRECT_URI = "http://localhost/callback"
-    public static final String DEFAULT_CLIENT_ID = "integration-test-client"
-    public static final String DEFAULT_CLIENT_SECRET = "integration-test-secret"
+    public static final String DEFAULT_REDIRECT_URI = TestConstants.CodeFlow.REDIRECT_URI
+    public static final String DEFAULT_CLIENT_ID = TestConstants.CodeFlow.CLIENT_ID
+    public static final String DEFAULT_CLIENT_SECRET = TestConstants.CodeFlow.CLIENT_SECRET
     private static final String DEFAULT_SCOPE = ""
 
     private final HeadlessBrowser browser
@@ -72,6 +73,7 @@ class TestOAuthClient implements Closeable {
     private final String tokenEndpointUrl
     private final String redirectUri
     private final String acrValues
+    private final HttpClient httpClient
     private String capturedCode
     private String capturedError
     private boolean flowComplete
@@ -87,7 +89,14 @@ class TestOAuthClient implements Closeable {
         this.tokenEndpointUrl = tokenEndpointUrl
         this.redirectUri = redirectUri
         this.acrValues = acrValues
-        installRedirectInterceptor()
+
+        this.httpClient = HttpClient.newBuilder()
+                .sslContext(InsecureSslContext.instance)
+                .build()
+
+        if (browser != null) {
+            installRedirectInterceptor()
+        }
     }
 
     private void installRedirectInterceptor() {
@@ -118,6 +127,7 @@ class TestOAuthClient implements Closeable {
      * Uses client ID {@code integration-test-client}, client secret
      * {@code integration-test-secret}, and empty scope.
      *
+     * @param browser a headless browser to run the authorization request in
      * @param authorizeEndpointUrl the authorization endpoint URL
      * @param tokenEndpointUrl the token endpoint URL
      * @param acrValues optional acr_values parameter for the authorization request
@@ -136,6 +146,20 @@ class TestOAuthClient implements Closeable {
             builder.acrValues(acrValues)
         }
         return builder.build()
+    }
+
+    /**
+     * Create a TestOAuthClient for the client credentials flow (no browser needed).
+     *
+     * @param clientId the client ID
+     * @param clientSecret the client secret
+     * @param tokenEndpointUrl the token endpoint URL
+     * @param scope optional scope parameter (defaults to empty)
+     * @return a new TestOAuthClient configured for client credentials
+     */
+    static TestOAuthClient clientCredentialsClient(String clientId, String clientSecret, String tokenEndpointUrl, String scope = DEFAULT_SCOPE) {
+        return new TestOAuthClient(null, clientId, clientSecret, scope,
+                null, tokenEndpointUrl, null, null)
     }
 
     /**
@@ -201,23 +225,40 @@ class TestOAuthClient implements Closeable {
         return doTokenExchange(capturedCode)
     }
 
-    private HttpsURLConnection createPostConnection(String endpointUrl, String basicCredentials) {
-        def url = new URL(endpointUrl)
-        def connection = url.openConnection() as HttpsURLConnection
+    /**
+     * Execute the client credentials grant.
+     *
+     * @param scope optional scope to use for this request (defaults to the client's configured scope)
+     * @return the token response containing access token and other fields
+     */
+    TokenResponse clientCredentials(String scope = this.scope) {
+        logger.info("Executing client credentials grant at {}", tokenEndpointUrl)
 
-        def sslContext = SSLContext.getInstance("TLS")
-        sslContext.init(null, [new TrustAllTrustManager()] as TrustManager[], null)
-        connection.setSSLSocketFactory(sslContext.socketFactory)
-        connection.setHostnameVerifier { host, session -> true }
-
-        connection.requestMethod = "POST"
-        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-        if (basicCredentials != null) {
-            connection.setRequestProperty("Authorization", "Basic ${basicCredentials}")
+        def body = "grant_type=client_credentials"
+        if (scope) {
+            body += "&scope=${URLEncoder.encode(scope, StandardCharsets.UTF_8)}"
         }
-        connection.doOutput = true
 
-        return connection
+        def credentials = Base64.encoder.encodeToString(
+                "${clientId}:${clientSecret}".getBytes(StandardCharsets.UTF_8)
+        )
+
+        def request = HttpRequest.newBuilder()
+                .uri(URI.create(tokenEndpointUrl))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Authorization", "Basic ${credentials}")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build()
+
+        def response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
+        if (response.statusCode() != 200) {
+            throw new IllegalStateException(
+                    "Client credentials grant failed with status ${response.statusCode()}: ${response.body()}"
+            )
+        }
+
+        return TokenResponse.fromJson(response.body())
     }
 
     private TokenResponse doTokenExchange(String code) {
@@ -231,27 +272,22 @@ class TestOAuthClient implements Closeable {
                 "${clientId}:${clientSecret}".getBytes(StandardCharsets.UTF_8)
         )
 
-        def connection = createPostConnection(tokenEndpointUrl, credentials)
+        def request = HttpRequest.newBuilder()
+                .uri(URI.create(tokenEndpointUrl))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Authorization", "Basic ${credentials}")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build()
 
-        connection.outputStream.withCloseable { out ->
-            out.write(body.getBytes(StandardCharsets.UTF_8))
-        }
+        def response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
-        def responseCode = connection.responseCode
-        def responseStream = (responseCode >= 400 ? connection.errorStream : connection.inputStream)
-        def responseBody = responseStream.withCloseable { input ->
-            new InputStreamReader(input, StandardCharsets.UTF_8).withCloseable { reader ->
-                reader.text
-            }
-        }
-
-        if (responseCode != 200) {
+        if (response.statusCode() != 200) {
             throw new IllegalStateException(
-                    "Token exchange failed with status ${responseCode}: ${responseBody}"
+                    "Token exchange failed with status ${response.statusCode()}: ${response.body()}"
             )
         }
 
-        return TokenResponse.fromJson(responseBody)
+        return TokenResponse.fromJson(response.body())
     }
 
     /**
@@ -266,37 +302,26 @@ class TestOAuthClient implements Closeable {
 
         def body = "token=${URLEncoder.encode(accessToken, StandardCharsets.UTF_8)}"
 
-        def connection = new URL(introspectUrl).openConnection() as HttpsURLConnection
-
-        def sslContext = SSLContext.getInstance("TLS")
-        sslContext.init(null, [new TrustAllTrustManager()] as TrustManager[], null)
-        connection.setSSLSocketFactory(sslContext.socketFactory)
-        connection.setHostnameVerifier { host, session -> true }
-
         def credentials = Base64.encoder.encodeToString(
                 "${clientId}:${clientSecret}".getBytes(StandardCharsets.UTF_8)
         )
 
-        connection.requestMethod = "POST"
-        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-        connection.setRequestProperty("Authorization", "Basic ${credentials}")
-        connection.doOutput = true
+        def request = HttpRequest.newBuilder()
+                .uri(URI.create(introspectUrl))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Authorization", "Basic ${credentials}")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build()
 
-        connection.outputStream.withCloseable { out ->
-            out.write(body.getBytes(StandardCharsets.UTF_8))
-        }
+        def response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
-        def responseCode = connection.responseCode
-        def responseBody = (responseCode >= 400 ? connection.errorStream : connection.inputStream)
-                .withCloseable { inputStream -> new String(inputStream.bytes, StandardCharsets.UTF_8) }
-
-        if (responseCode != 200) {
+        if (response.statusCode() != 200) {
             throw new IllegalStateException(
-                    "Introspection failed with status ${responseCode}: ${responseBody}"
+                    "Introspection failed with status ${response.statusCode()}: ${response.body()}"
             )
         }
 
-        return JsonUtil.parseJson(responseBody)
+        return JsonUtil.parseJson(response.body())
     }
 
     private static String extractQueryParam(String url, String param) {
@@ -310,7 +335,8 @@ class TestOAuthClient implements Closeable {
 
     @Override
     void close() {
-        browser.close()
+        browser?.close()
+        httpClient?.close()
     }
 
     /**
