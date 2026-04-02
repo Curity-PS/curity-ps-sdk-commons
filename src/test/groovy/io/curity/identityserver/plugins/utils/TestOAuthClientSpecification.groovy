@@ -105,6 +105,88 @@ class TestOAuthClientSpecification extends Specification {
         client?.close()
     }
 
+    def "reset clears captured state"() {
+        given:
+        def browser = HeadlessBrowser.create()
+        def client = TestOAuthClient.defaultClient(browser, "https://example.com/authorize", "https://example.com/token")
+
+        and: "A redirect has been captured"
+        browser.client.getPage("${TestOAuthClient.DEFAULT_REDIRECT_URI}?error=access_denied")
+        assert client.flowComplete
+        assert client.error == "access_denied"
+
+        when:
+        client.reset()
+
+        then:
+        !client.flowComplete
+        client.error == null
+
+        cleanup:
+        client?.close()
+    }
+
+    def "reset allows reuse after a completed flow"() {
+        given:
+        def browser = HeadlessBrowser.create()
+        def client = TestOAuthClient.defaultClient(browser, "data:text/html,<title>Auth</title>", "https://example.com/token")
+
+        and: "A first flow completes"
+        browser.client.getPage("${TestOAuthClient.DEFAULT_REDIRECT_URI}?code=first-code")
+        assert client.flowComplete
+
+        when: "Reset and simulate a second flow"
+        client.reset()
+
+        then: "State is clean"
+        !client.flowComplete
+        client.error == null
+
+        when: "A second redirect is captured"
+        browser.client.getPage("${TestOAuthClient.DEFAULT_REDIRECT_URI}?code=second-code")
+
+        then: "The new flow completes"
+        client.flowComplete
+
+        cleanup:
+        client?.close()
+    }
+
+    def "codeFlow passes extra parameters to the authorization request"() {
+        given:
+        def browser = HeadlessBrowser.create()
+        def client = TestOAuthClient.defaultClient(browser, "data:text/html,<title>Auth</title>", "https://example.com/token")
+        def extraParams = [login_hint: "user@example.com", prompt: "login"]
+
+        when:
+        client.codeFlow(null, null, extraParams)
+
+        then: "The browser navigated to a URL containing the extra parameters"
+        def url = browser.currentUrl
+        url.contains("login_hint=user%40example.com")
+        url.contains("prompt=login")
+
+        cleanup:
+        client?.close()
+    }
+
+    def "codeFlow works without extra parameters"() {
+        given:
+        def browser = HeadlessBrowser.create()
+        def client = TestOAuthClient.defaultClient(browser, "data:text/html,<title>Auth</title>", "https://example.com/token")
+
+        when:
+        client.codeFlow()
+
+        then: "The browser navigated to the authorize URL with standard parameters"
+        def url = browser.currentUrl
+        url.contains("client_id=")
+        url.contains("response_type=code")
+
+        cleanup:
+        client?.close()
+    }
+
     def "builder validates required fields"() {
         when: "Building without clientId"
         new TestOAuthClient.Builder()

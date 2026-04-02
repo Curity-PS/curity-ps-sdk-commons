@@ -17,6 +17,7 @@ package io.curity.identityserver.test.utils
 
 import org.htmlunit.BrowserVersion
 import org.htmlunit.NicelyResynchronizingAjaxController
+import org.htmlunit.Page
 import org.htmlunit.WebClient
 import org.htmlunit.html.DomElement
 import org.htmlunit.html.HtmlElement
@@ -95,13 +96,18 @@ final class HeadlessBrowser implements Closeable {
 
     HtmlPage navigate(String url) {
         logger.info("Navigating to: $url")
-        currentPage = webClient.getPage(url) as HtmlPage
-        updateStatusFromPage(currentPage)
+        Page page = webClient.getPage(url)
+        if (page instanceof HtmlPage) {
+            currentPage = page
+            updateStatusFromPage(currentPage)
+        } else {
+            lastStatusCode = page.webResponse?.statusCode ?: -1
+        }
         webClient.waitForBackgroundJavaScript(backgroundJsTimeout.toMillis())
         return currentPage
     }
 
-    HtmlPage startCodeFlow(String url, String clientId, String scope = null, String redirectUri = null, String acrValues = null) {
+    HtmlPage startCodeFlow(String url, String clientId, String scope = null, String redirectUri = null, String acrValues = null, Map<String, String> extraParameters = [:]) {
         def queryParams = []
         queryParams << "client_id=${URLEncoder.encode(clientId, 'UTF-8')}"
         queryParams << "response_type=code"
@@ -113,6 +119,9 @@ final class HeadlessBrowser implements Closeable {
         }
         if (acrValues) {
             queryParams << "acr_values=${URLEncoder.encode(acrValues, 'UTF-8')}"
+        }
+        extraParameters.each { key, value ->
+            queryParams << "${URLEncoder.encode(key, 'UTF-8')}=${URLEncoder.encode(value, 'UTF-8')}"
         }
         def queryString = "?" + queryParams.join("&")
         navigate("$url$queryString")
@@ -153,6 +162,13 @@ final class HeadlessBrowser implements Closeable {
         } else {
             throw new IllegalStateException("Element '${cssSelector}' is not a text input")
         }
+    }
+
+    /**
+     * Clear all cookies from the browser's cookie manager.
+     */
+    void clearCookies() {
+        webClient.cookieManager.clearCookies()
     }
 
     @Override
