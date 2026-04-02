@@ -207,12 +207,13 @@ class TestOAuthClient implements Closeable {
      *
      * @param scope optional scope to use for this request (defaults to the client's configured scope)
      * @param acrValues optional acr_values to use for this request (defaults to the client's configured acr_values)
+     * @param extraParameters optional extra query parameters to include in the authorization request
      */
-    void codeFlow(String scope = this.scope, String acrValues = this.acrValues) {
+    void codeFlow(String scope = this.scope, String acrValues = this.acrValues, Map<String, String> extraParameters = [:]) {
         capturedCode = null
         capturedError = null
         flowComplete = false
-        browser.startCodeFlow(authorizeEndpointUrl, clientId, scope, redirectUri, acrValues)
+        browser.startCodeFlow(authorizeEndpointUrl, clientId, scope, redirectUri, acrValues, extraParameters)
     }
 
     /**
@@ -352,7 +353,7 @@ class TestOAuthClient implements Closeable {
     /**
      * Token response from the authorization server.
      */
-    static class TokenResponse {
+    public static class TokenResponse {
         final String accessToken
         final String refreshToken
         final String idToken
@@ -380,7 +381,7 @@ class TestOAuthClient implements Closeable {
     /**
      * Builder for {@link TestOAuthClient}.
      */
-    static class Builder {
+    public static class Builder {
         private String _clientId
         private String _clientSecret
         private String _scope
