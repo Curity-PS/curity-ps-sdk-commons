@@ -9,8 +9,6 @@ jobs:
   release:
     uses: curity-ps/release-workflow/.github/workflows/release.yml@main
     permissions: write-all
-    with:
-      skip_integration_test: true
     secrets:
       LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
 
