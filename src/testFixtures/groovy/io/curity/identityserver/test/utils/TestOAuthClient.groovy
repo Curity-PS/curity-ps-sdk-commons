@@ -185,6 +185,16 @@ class TestOAuthClient implements Closeable {
     }
 
     /**
+     * Reset the client state so it can be reused for another flow.
+     * Clears any captured authorization code, error, and flow-complete flag.
+     */
+    void reset() {
+        capturedCode = null
+        capturedError = null
+        flowComplete = false
+    }
+
+    /**
      * Start the authorization code flow.
      *
      * <p>Navigates to the authorization endpoint. The browser follows redirects
