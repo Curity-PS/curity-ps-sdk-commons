@@ -158,6 +158,13 @@ final class HeadlessBrowser implements Closeable {
         }
     }
 
+    /**
+     * Clear all cookies from the browser's cookie manager.
+     */
+    void clearCookies() {
+        webClient.cookieManager.clearCookies()
+    }
+
     @Override
     void close() {
         webClient.close()

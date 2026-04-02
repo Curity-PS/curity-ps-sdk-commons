@@ -235,6 +235,12 @@ browser.clickByCss("#submit")
 browser.waitForElement(".success-message")
 ```
 
+Clear cookies between flows (e.g. to test SSO or re-authentication):
+
+```groovy
+browser.clearCookies()
+```
+
 For mTLS authentication, supply a keystore:
 
 ```groovy
