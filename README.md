@@ -152,6 +152,19 @@ then: "An access token is returned"
 tokens.accessToken != null
 ```
 
+Pass extra parameters to the authorization request, such as `login_hint` or `prompt`:
+
+```groovy
+client.codeFlow(null, null, [login_hint: "user@example.com", prompt: "login"])
+```
+
+Reset the client state to reuse it for another flow:
+
+```groovy
+client.reset()
+client.codeFlow()
+```
+
 Introspect the access token to verify its claims:
 
 ```groovy
