@@ -17,6 +17,7 @@ package io.curity.identityserver.test.utils
 
 import org.htmlunit.BrowserVersion
 import org.htmlunit.NicelyResynchronizingAjaxController
+import org.htmlunit.Page
 import org.htmlunit.WebClient
 import org.htmlunit.html.DomElement
 import org.htmlunit.html.HtmlElement
@@ -95,8 +96,13 @@ final class HeadlessBrowser implements Closeable {
 
     HtmlPage navigate(String url) {
         logger.info("Navigating to: $url")
-        currentPage = webClient.getPage(url) as HtmlPage
-        updateStatusFromPage(currentPage)
+        Page page = webClient.getPage(url)
+        if (page instanceof HtmlPage) {
+            currentPage = page
+            updateStatusFromPage(currentPage)
+        } else {
+            lastStatusCode = page.webResponse?.statusCode ?: -1
+        }
         webClient.waitForBackgroundJavaScript(backgroundJsTimeout.toMillis())
         return currentPage
     }
