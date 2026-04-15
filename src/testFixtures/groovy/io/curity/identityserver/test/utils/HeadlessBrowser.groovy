@@ -27,7 +27,7 @@ import org.htmlunit.html.HtmlTextArea
 import org.slf4j.LoggerFactory
 
 import java.time.Duration
-import java.net.URLEncoder
+
 /**
  * Simple HtmlUnit-based headless browser utility for integration tests.
  */
@@ -255,15 +255,15 @@ final class HeadlessBrowser implements Closeable {
             }
 
             return new BrowserConfig(
-                    browserVersion,
-                    javaScriptEnabled,
-                    cssEnabled,
-                    Duration.ofSeconds(timeoutSeconds),
-                    Duration.ofSeconds(pageLoadSeconds),
-                    Duration.ofSeconds(jsWaitSeconds),
-                    resolvedKeystoreUrl,
-                    resolvedKeystorePassword,
-                    resolvedKeystoreType
+                browserVersion,
+                javaScriptEnabled,
+                cssEnabled,
+                Duration.ofSeconds(timeoutSeconds),
+                Duration.ofSeconds(pageLoadSeconds),
+                Duration.ofSeconds(jsWaitSeconds),
+                resolvedKeystoreUrl,
+                resolvedKeystorePassword,
+                resolvedKeystoreType
             )
         }
     }
