@@ -16,9 +16,9 @@
 
 package io.curity.identityserver.plugins.jwt;
 
+import io.curity.identityserver.plugins.attributes.ValidatedJwtAttributes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.curity.identityserver.sdk.attribute.Attributes;
 import se.curity.identityserver.sdk.config.Configuration;
 import se.curity.identityserver.sdk.errors.ErrorCode;
 import se.curity.identityserver.sdk.plugin.ManagedObject;
@@ -89,9 +89,9 @@ public final class JwtValidatorManagedObject<T extends Configuration> extends Ma
      *
      * @param token the token to validate
      *
-     * @return Map of the claims of the token
+     * @return Validated JWT attributes
      */
-    public Attributes validate(String token)
+    public ValidatedJwtAttributes validate(String token)
     {
         _logger.debug("Validating JWT token with expected audience '{}' and issuer '{}'",
                 _configuration.getExpectedAudience(), _configuration.getExpectedIssuer());
