@@ -182,12 +182,13 @@ class JwtValidatorManagedObjectTest extends Specification {
             }
         }
     }
+
     private mockedCryptoStore() {
-       return  Mock(AsymmetricSignatureVerificationCryptoStore) {
-           getPublicKey() >> {
-               return getFirstPublicKeyFromJwks(jwksJson)
-           }
-       }
+        return Mock(AsymmetricSignatureVerificationCryptoStore) {
+            getPublicKey() >> {
+                return getFirstPublicKeyFromJwks(jwksJson)
+            }
+        }
     }
 
     private JwtValidatorConfiguration mockedJwksUriConfiguration(HttpClient httpClient) {

@@ -74,7 +74,7 @@ public final class OpenIdDiscoveryManagedObject<T extends Configuration> extends
         _jwtValidator = new JwksUriJwtValidator(URI.create(getConfiguredString("jwks_uri")), httpClient);
         _opaqueTokenValidator = clientId != null && clientSecret != null
                 ? new AccessTokenValidator(getTokenIntrospectionEndpoint(), httpClient,
-                        openIdDiscoveryConfiguration.getJson(), clientId, clientSecret)
+                openIdDiscoveryConfiguration.getJson(), clientId, clientSecret)
                 : null;
     }
 

@@ -43,7 +43,10 @@ public interface OAuthClientConfig extends Configuration
     boolean usePkce();
 
     AuthenticatorInformationProvider authenticatorInformationProvider();
+
     ExceptionFactory exceptionFactory();
+
     SessionManager sessionManager();
+
     Json json();
 }

@@ -1,4 +1,5 @@
 # curity-ps-sdk-commons
+
 [![Quality](https://img.shields.io/badge/quality-demo-red)](https://curity.io/resources/code-examples/status/)
 
 Curity SDK Commons, a package of Java utility classes for the Curity Identity Server plugin development
@@ -8,7 +9,8 @@ This package is private for the time being, when we are ready we can make it pub
 The release action for this github project creates a package in the maven repo, which can be used with authentication.
 But easier to build it locally as long as its private.
 
-This is ongoing development, and is not yet ready for production use. The library is not supported by Curity Professional Services.
+This is ongoing development, and is not yet ready for production use. The library is not supported by Curity
+Professional Services.
 
 ## Build
 
@@ -53,8 +55,8 @@ Add one or more plugins by pointing to the plugin release folder:
 
 ```groovy
 def container = CurityServerContainer.withVersion("11.0")
-    .withPlugin("build/distributions/my-plugin")
-    .withPlugin("build/distributions/another-plugin")
+        .withPlugin("build/distributions/my-plugin")
+        .withPlugin("build/distributions/another-plugin")
 container.start()
 ```
 
@@ -62,9 +64,9 @@ Supply additional configuration XML files that are merged with the bundled base 
 
 ```groovy
 def container = CurityServerContainer.withVersion("11.0")
-    .withPlugin("build/distributions/my-plugin")
-    .withConfiguration("src/test/resources/my-plugin-config.xml")
-    .withConfiguration("src/test/resources/extra-config.xml")
+        .withPlugin("build/distributions/my-plugin")
+        .withConfiguration("src/test/resources/my-plugin-config.xml")
+        .withConfiguration("src/test/resources/extra-config.xml")
 container.start()
 ```
 
@@ -72,9 +74,9 @@ Pass environment variables into the container (useful for parameterized configur
 
 ```groovy
 def container = CurityServerContainer.withVersion("11.0")
-    .withPlugin("build/distributions/my-plugin")
-    .withConfiguration("src/test/resources/my-plugin-config.xml")
-    .withEnvVariables(["MY_SETTING": "value1", "OTHER_SETTING": "value2"])
+        .withPlugin("build/distributions/my-plugin")
+        .withConfiguration("src/test/resources/my-plugin-config.xml")
+        .withEnvVariables(["MY_SETTING": "value1", "OTHER_SETTING": "value2"])
 container.start()
 ```
 
@@ -94,11 +96,11 @@ You can also load configuration or run idsh commands at runtime:
 container.loadXmlConfig('<config>...</config>')
 
 container.runIdshCommands([
-    "configure",
-    "set environments environment some-setting some-value",
-    "commit",
-    "exit no-confirm",
-    "exit"
+        "configure",
+        "set environments environment some-setting some-value",
+        "commit",
+        "exit no-confirm",
+        "exit"
 ])
 ```
 
@@ -108,16 +110,16 @@ An OAuth 2.0 test client that drives the authorization code flow using a headles
 to the authorization endpoint, follows redirects to the authentication page, intercepts the redirect back
 to the `redirect_uri` to capture the authorization code, and exchanges it for tokens.
 
-A default client is provided with pre-configured client credentials and support for code flow and token introspection. 
+A default client is provided with pre-configured client credentials and support for code flow and token introspection.
 
 Create a default client using the container's endpoint URLs:
 
 ```groovy
 def browser = HeadlessBrowser.create()
 def client = TestOAuthClient.defaultClient(
-    browser,
-    container.authorizationEndpointUrl,
-    container.tokenEndpointUrl
+        browser,
+        container.authorizationEndpointUrl,
+        container.tokenEndpointUrl
 )
 ```
 
@@ -125,10 +127,10 @@ Optionally pass `acr_values` to select a specific authenticator:
 
 ```groovy
 def client = TestOAuthClient.defaultClient(
-    browser,
-    container.authorizationEndpointUrl,
-    container.tokenEndpointUrl,
-    "urn:se:curity:authentication:html-form:my-authenticator"
+        browser,
+        container.authorizationEndpointUrl,
+        container.tokenEndpointUrl,
+        "urn:se:curity:authentication:html-form:my-authenticator"
 )
 ```
 
@@ -136,11 +138,11 @@ Request a specific scope and acr value to select an authenticator and control wh
 
 ```groovy
 def client = TestOAuthClient.defaultClient(
-    browser,
-    container.authorizationEndpointUrl,
-    container.tokenEndpointUrl,
-    "urn:se:curity:authentication:html-form:my-authenticator",
-    "openid profile"
+        browser,
+        container.authorizationEndpointUrl,
+        container.tokenEndpointUrl,
+        "urn:se:curity:authentication:html-form:my-authenticator",
+        "openid profile"
 )
 ```
 
@@ -199,10 +201,10 @@ For machine-to-machine flows that don't require a browser, create a client crede
 
 ```groovy
 def client = TestOAuthClient.clientCredentialsClient(
-    "my-client-id",
-    "my-client-secret",
-    container.tokenEndpointUrl,
-    "requested-scope"
+        "my-client-id",
+        "my-client-secret",
+        container.tokenEndpointUrl,
+        "requested-scope"
 )
 
 def tokens = client.clientCredentials()
@@ -217,8 +219,8 @@ request, reusing it for all subsequent calls.
 
 ```groovy
 def graphql = new GraphQLClient(
-    container.runtimeUrl + "/graph",
-    container.tokenEndpointUrl
+        container.runtimeUrl + "/graph",
+        container.tokenEndpointUrl
 )
 ```
 
@@ -295,6 +297,7 @@ String scope = attributes.getScope();
 ```
 
 The key resolution strategy is configured via the `KeyResolverConfiguration` OneOf, which supports either:
+
 - **JWKS URI** — resolves keys dynamically from a JWKS endpoint (requires an `HttpClient` and the JWKS URI)
 - **Verification Crypto Store** — uses a statically configured asymmetric verification key
 

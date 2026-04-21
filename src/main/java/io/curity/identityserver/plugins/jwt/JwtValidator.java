@@ -35,10 +35,10 @@ public interface JwtValidator
      * @param audience String that has to be in the `aud` claim of the JWT
      * @return Map of claims in the JWT
      */
-    default ValidatedJwtAttributes validateJwt(String jwt, String issuer, String audience) throws JwtValidationException {
+    default ValidatedJwtAttributes validateJwt(String jwt, String issuer, String audience) throws JwtValidationException
+    {
         return validateJwt(jwt, issuer, audience, Set.of());
     }
-
 
     ValidatedJwtAttributes validateJwt(String jwt,
                                        String issuer,

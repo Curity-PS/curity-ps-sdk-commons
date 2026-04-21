@@ -20,7 +20,7 @@ import se.curity.identityserver.sdk.attribute.Attribute
 import se.curity.identityserver.sdk.service.SessionManager
 
 
-class TestSessionManager implements SessionManager{
+class TestSessionManager implements SessionManager {
     List<Attribute> sessionAttributes = []
 
     @Override
@@ -37,7 +37,7 @@ class TestSessionManager implements SessionManager{
 
     @Override
     Attribute get(String key) {
-        return sessionAttributes.find {it.name.simpleName == key}
+        return sessionAttributes.find { it.name.simpleName == key }
     }
 
     @Override

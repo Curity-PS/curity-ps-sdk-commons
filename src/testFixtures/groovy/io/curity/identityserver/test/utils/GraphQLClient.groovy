@@ -23,7 +23,9 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 
-import static io.curity.identityserver.test.utils.constants.TestConstants.GraphQL.*
+import static io.curity.identityserver.test.utils.constants.TestConstants.GraphQL.ADMIN_SCOPE
+import static io.curity.identityserver.test.utils.constants.TestConstants.GraphQL.CLIENT_ID
+import static io.curity.identityserver.test.utils.constants.TestConstants.GraphQL.CLIENT_SECRET
 
 /**
  * A test client for the Curity Identity Server's User Management GraphQL API.
@@ -54,11 +56,11 @@ class GraphQLClient implements Closeable {
     GraphQLClient(String graphqlUrl, String tokenEndpointUrl) {
         this.graphqlUrl = graphqlUrl
         this.oauthClient = TestOAuthClient.clientCredentialsClient(CLIENT_ID, CLIENT_SECRET,
-            tokenEndpointUrl, ADMIN_SCOPE)
+                tokenEndpointUrl, ADMIN_SCOPE)
 
         this.httpClient = HttpClient.newBuilder()
-            .sslContext(InsecureSslContext.instance)
-            .build()
+                .sslContext(InsecureSslContext.instance)
+                .build()
     }
 
     private String getToken() {
@@ -80,11 +82,11 @@ class GraphQLClient implements Closeable {
         def body = JsonUtil.toJson([query: query, variables: variables])
 
         def request = HttpRequest.newBuilder()
-            .uri(URI.create(graphqlUrl))
-            .header("Content-Type", "application/json")
-            .header("Authorization", "Bearer ${getToken()}")
-            .POST(HttpRequest.BodyPublishers.ofString(body))
-            .build()
+                .uri(URI.create(graphqlUrl))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer ${getToken()}")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build()
 
         def response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
         if (response.statusCode() != 200) {

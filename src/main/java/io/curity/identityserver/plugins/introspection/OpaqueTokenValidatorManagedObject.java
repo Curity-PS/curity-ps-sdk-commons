@@ -48,8 +48,8 @@ public final class OpaqueTokenValidatorManagedObject<T extends Configuration> ex
     /**
      * Main constructor for the managed object
      *
-     * @param config                plugin config
-     * @param introspectionConfig   Configuration for the introspection validator
+     * @param config              plugin config
+     * @param introspectionConfig Configuration for the introspection validator
      */
     public OpaqueTokenValidatorManagedObject(T config, OpaqueTokenValidatorConfiguration introspectionConfig)
     {

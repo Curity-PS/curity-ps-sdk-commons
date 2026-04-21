@@ -28,6 +28,6 @@ public final class JwtValidationException extends RuntimeException
      */
     public JwtValidationException(Exception e)
     {
-       super(e);
+        super(e);
     }
 }

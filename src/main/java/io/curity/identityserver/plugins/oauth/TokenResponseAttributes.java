@@ -41,6 +41,7 @@ public final class TokenResponseAttributes extends Attributes
 
     /**
      * Returns the access token from the token response.
+     *
      * @return The string value of the access token
      * @throws IllegalArgumentException if the access token is not present
      */
@@ -66,7 +67,8 @@ public final class TokenResponseAttributes extends Attributes
      * @return The string value of the refresh token or null if not present
      */
     @Nullable
-    public String getRefreshToken() {
+    public String getRefreshToken()
+    {
         return get("refresh_token").getValueOfType(String.class);
     }
 

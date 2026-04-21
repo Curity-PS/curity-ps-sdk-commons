@@ -20,14 +20,15 @@ import java.net.URI;
 
 public final class UriHelper
 {
-    private UriHelper() {
+    private UriHelper()
+    {
 
     }
 
     /**
      * Append a path segment to a URI, ensuring there is exactly one '/' between them.
      *
-     * @param uri URI to append to
+     * @param uri  URI to append to
      * @param path Path segment to append
      * @return New URI with the appended path
      */

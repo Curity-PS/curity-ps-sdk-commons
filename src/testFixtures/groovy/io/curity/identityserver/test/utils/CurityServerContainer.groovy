@@ -25,6 +25,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Duration
+
 /**
  * Testcontainer for Curity Identity Server with plugins pre-installed.
  *

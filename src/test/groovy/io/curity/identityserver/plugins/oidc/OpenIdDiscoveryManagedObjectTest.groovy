@@ -114,7 +114,7 @@ class OpenIdDiscoveryManagedObjectTest extends Specification {
     }
 
     private HttpClient mockedHttpClientResponseForUri(URI uri,
-                                              Object responseBody) {
+                                                      Object responseBody) {
         HttpClient httpClientMock = Mock(HttpClient) {
             1 * request(uri) >> {
                 return Mock(HttpRequest.Builder) {

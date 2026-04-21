@@ -23,7 +23,7 @@ import java.security.cert.X509Certificate
 /**
  * Trust all TLS certificates
  */
-class TrustAllTrustManager implements X509TrustManager{
+class TrustAllTrustManager implements X509TrustManager {
     @Override
     void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
 

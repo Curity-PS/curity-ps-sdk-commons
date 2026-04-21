@@ -21,6 +21,7 @@ import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
 
 import java.time.Duration
 import java.time.Instant
+
 /**
  * Wait strategy that polls the Curity Identity Server status endpoint ({@code GET /} on the
  * status port, default 4465) and inspects the JSON response.

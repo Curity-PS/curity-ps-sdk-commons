@@ -28,7 +28,7 @@ class GraphQLClientIntegrationSpec extends CurityServerContainerIntegrationSpec 
 
     def setupSpec() {
         client = new GraphQLClient("${container.runtimeUrl}${UM_ENDPOINT}",
-            container.tokenEndpointUrl)
+                container.tokenEndpointUrl)
     }
 
     def cleanupSpec() {

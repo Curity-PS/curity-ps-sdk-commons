@@ -33,7 +33,7 @@ import java.util.Set;
 
 /**
  * Jwt Validator built to be used in a managed object.
- *
+ * <p>
  * It will hold a reference to a @{link HttpsJwks} object that will keep the keys fresh
  */
 public final class JwksUriJwtValidator implements JwtValidator
@@ -46,7 +46,7 @@ public final class JwksUriJwtValidator implements JwtValidator
     /**
      * Constructor
      *
-     * @param jwksUri the URI to the JWKS. Will be cached, but updated if necessary
+     * @param jwksUri    the URI to the JWKS. Will be cached, but updated if necessary
      * @param httpClient the HTTP client to use for fetching the JWKS
      */
     public JwksUriJwtValidator(URI jwksUri, HttpClient httpClient)

@@ -22,11 +22,11 @@ class ValidatedJwtAttributesTest extends Specification {
     def "Attributes object can be parsed from map"() {
         given: "A map of attributes"
         def attributesMap = [
-                "sub": "johndoe",
-                "name": "John Doe",
+                "sub"  : "johndoe",
+                "name" : "John Doe",
                 "scope": "read",
-                "aud": "test-audience",
-                "iat": 12341234
+                "aud"  : "test-audience",
+                "iat"  : 12341234
         ]
 
         when: "The map is converted to an attributes object"

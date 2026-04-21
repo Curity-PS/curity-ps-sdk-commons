@@ -30,6 +30,7 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
+
 /**
  * A test OAuth client that uses a {@link HeadlessBrowser} to drive the
  * authorization code flow against a Curity Identity Server.
