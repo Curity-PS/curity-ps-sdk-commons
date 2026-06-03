@@ -40,10 +40,26 @@ import java.time.Duration
  * into the container so that the configuration can use the
  * {@code #{LICENSE_KEY}} placeholder.</p>
  *
+ * <p>The base image can be overridden at runtime via environment variables,
+ * which take precedence over {@link #withImage} and {@link #withVersion}:</p>
+ * <ul>
+ *   <li>{@code TEST_IMAGE} — overrides the repository portion (e.g.
+ *       {@code my-local/idsvr})</li>
+ *   <li>{@code TEST_VERSION} — overrides the tag portion (e.g. {@code 11.3})</li>
+ * </ul>
+ * <p>Either can be set independently. For example, {@code TEST_VERSION=11.3}
+ * alone runs against {@code curity.azurecr.io/curity/idsvr:11.3}; setting both
+ * combines them as {@code $TEST_IMAGE:$TEST_VERSION}.</p>
+ *
  * <h3>Usage</h3>
  * <pre>
  * // Single plugin with specific version
  * def container = CurityServerContainer.withVersion("11.0")
+ *     .withPlugin("build/my-plugin")
+ * container.start()
+ *
+ * // Locally built image (e.g. to test unreleased functionality)
+ * def container = CurityServerContainer.withImage("my-idsvr:dev")
  *     .withPlugin("build/my-plugin")
  * container.start()
  *
@@ -71,16 +87,14 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
     private static final String BASE_IMAGE_REPOSITORY = "curity.azurecr.io/curity/idsvr"
     private static final String DEFAULT_BASE_IMAGE = "$BASE_IMAGE_REPOSITORY:latest"
     private static final String BASE_CONFIG_RESOURCE = "base-config.xml"
+    private static final String TEST_IMAGE_ENV = "TEST_IMAGE"
+    private static final String TEST_VERSION_ENV = "TEST_VERSION"
 
     private List<Path> pluginFolders = []
     private List<Path> configurationFiles = []
     private List<Map.Entry<Path, String>> files = []
     private Map<String, String> envVariables = [:]
-    private String version = null
-
-    private static String imageForVersion(String version) {
-        version ? "$BASE_IMAGE_REPOSITORY:$version" : DEFAULT_BASE_IMAGE
-    }
+    private String baseImage = DEFAULT_BASE_IMAGE
 
     private CurityServerContainer() {
         // The image passed here is a placeholder; it is replaced in start() once all builder state is accumulated.
@@ -97,14 +111,33 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
     }
 
     /**
-     * Create a new Curity Server container for the given version.
+     * Create a new Curity Server container for the given version. Only the tag
+     * portion of the base image is replaced; the repository is left untouched
+     * (i.e. the official {@code curity.azurecr.io/curity/idsvr} repository for
+     * a fresh container).
      *
      * @param version Version tag (e.g. {@code "11.0"}).
      * @return a new container instance for chaining
      */
     static CurityServerContainer withVersion(String version) {
         def container = new CurityServerContainer()
-        container.version = version
+        if (version) {
+            container.baseImage = "${repoOf(container.baseImage)}:$version"
+        }
+        return container
+    }
+
+    /**
+     * Create a new Curity Server container using an arbitrary base image reference.
+     * Use this to run integration tests against a locally built image with
+     * unreleased functionality, e.g. {@code "my-idsvr:dev"}.
+     *
+     * @param image Full Docker image reference including tag (e.g. {@code "my-idsvr:dev"}).
+     * @return a new container instance for chaining
+     */
+    static CurityServerContainer withImage(String image) {
+        def container = new CurityServerContainer()
+        container.baseImage = image
         return container
     }
 
@@ -164,6 +197,11 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
                                                   List<Map.Entry<Path, String>> files, String baseImage) {
         def baseConfigContent = readBaseConfig()
         def baseConfigTemp = createTempFile(baseConfigContent, "base-config", ".xml")
+        def hasIdsvrUser = imageHasUser(baseImage, "idsvr")
+        if (!hasIdsvrUser) {
+            logger.info("Base image '{}' has no 'idsvr' user — skipping chown and USER switch; " +
+                    "container will run as the base image's default user.", baseImage)
+        }
         def image = new ImageFromDockerfile()
                 .withDockerfileFromBuilder { builder ->
                     def b = builder.from(baseImage)
@@ -187,10 +225,19 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
                         b.copy(contextName, entry.value)
                     }
 
-                    b.run("chown -R idsvr:idsvr /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
-                            .run("ln -sf /dev/stdout /opt/idsvr/var/log/confsvc.log")
-                            .user("idsvr")
-                            .env("LOGGING_LEVEL", "DEBUG")
+                    // mkdir -p guards against base images that don't ship the plugins
+                    // directory by default (e.g. some local/dev builds).
+                    if (hasIdsvrUser) {
+                        b.run("mkdir -p /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins && " +
+                                "chown -R idsvr:idsvr /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
+                    } else {
+                        b.run("mkdir -p /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
+                    }
+                    b.run("ln -sf /dev/stdout /opt/idsvr/var/log/confsvc.log")
+                    if (hasIdsvrUser) {
+                        b.user("idsvr")
+                    }
+                    b.env("LOGGING_LEVEL", "DEBUG")
                             .env("SERVICE_ROLE", "default")
                             .env("ADMIN", "true")
                             .build()
@@ -355,10 +402,91 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
         ])
     }
 
+    /**
+     * Resolve the effective base image, giving the {@code TEST_IMAGE} and
+     * {@code TEST_VERSION} environment variables the highest priority so that
+     * CI or local runs can target a different image without code changes.
+     * {@code TEST_IMAGE} overrides the repository portion and {@code TEST_VERSION}
+     * overrides the tag portion. Either can be set independently — e.g.
+     * {@code TEST_VERSION=11.3} alone keeps the configured repository and only
+     * swaps the tag.
+     */
+    private String resolveBaseImage() {
+        def imageOverride = System.getenv(TEST_IMAGE_ENV)
+        def versionOverride = System.getenv(TEST_VERSION_ENV)
+        def repo = imageOverride ?: repoOf(baseImage)
+        def tag = versionOverride ?: tagOf(baseImage)
+        def resolved = "$repo:$tag"
+
+        if (imageOverride || versionOverride) {
+            logger.info("Using base image '{}' (env overrides: {}{}{})",
+                    resolved,
+                    imageOverride ? "$TEST_IMAGE_ENV=$imageOverride" : "",
+                    imageOverride && versionOverride ? ", " : "",
+                    versionOverride ? "$TEST_VERSION_ENV=$versionOverride" : "")
+        }
+        return resolved
+    }
+
+    /**
+     * Cache of "image -> does user X exist" lookups so we only pay the
+     * inspection cost once per JVM session per image+user combination.
+     */
+    private static final java.util.concurrent.ConcurrentMap<String, Boolean> USER_EXISTS_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>()
+
+    /**
+     * Check whether the given image contains the given OS user by running
+     * {@code id <user>} as a one-shot container. Returns {@code false} if the
+     * user is missing or if the check itself fails for any reason — callers
+     * use this to decide whether to chown / USER-switch in the layered build.
+     */
+    private static boolean imageHasUser(String image, String username) {
+        return USER_EXISTS_CACHE.computeIfAbsent("$image|$username".toString(), { key ->
+            try {
+                def pb = new ProcessBuilder("docker", "run", "--rm", "--entrypoint", "id", image, username)
+                pb.redirectErrorStream(true)
+                def proc = pb.start()
+                proc.inputStream.bytes // drain so the process can exit
+                def finished = proc.waitFor(60, java.util.concurrent.TimeUnit.SECONDS)
+                if (!finished) {
+                    proc.destroyForcibly()
+                    logger.warn("Timed out checking whether user '{}' exists in image '{}'", username, image)
+                    return false
+                }
+                return proc.exitValue() == 0
+            } catch (Exception e) {
+                logger.warn("Could not check user '{}' in image '{}': {}", username, image, e.message)
+                return false
+            }
+        })
+    }
+
+    /**
+     * Extract the repository portion of an image reference, treating a colon
+     * after the last slash as the tag separator (so registry ports like
+     * {@code localhost:5000/foo} are handled correctly).
+     */
+    private static String repoOf(String image) {
+        def lastSlash = image.lastIndexOf('/')
+        def lastColon = image.lastIndexOf(':')
+        return lastColon > lastSlash ? image.substring(0, lastColon) : image
+    }
+
+    /**
+     * Extract the tag portion of an image reference, defaulting to
+     * {@code "latest"} when no tag is present.
+     */
+    private static String tagOf(String image) {
+        def lastSlash = image.lastIndexOf('/')
+        def lastColon = image.lastIndexOf(':')
+        return lastColon > lastSlash ? image.substring(lastColon + 1) : "latest"
+    }
+
     @Override
     void start() {
         // Build the image from accumulated builder state
-        setImage(buildImage(configurationFiles, pluginFolders, files, imageForVersion(version)))
+        setImage(buildImage(configurationFiles, pluginFolders, files, resolveBaseImage()))
 
         // Pass the license key into the container for config parameterization (if set)
         def licenseKey = System.getenv("LICENSE_KEY")
