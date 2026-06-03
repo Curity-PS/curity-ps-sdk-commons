@@ -112,8 +112,8 @@ To run against a locally built image with a specific tag:
 TEST_IMAGE=docker.io/curity/local-build TEST_VERSION=dev ./gradlew integrationTest
 ```
 
-If the overridden image does not contain the `idsvr` user (e.g. a stripped-down local build), the
-container automatically skips the chown step and the `USER idsvr` switch so the server still starts.
+If the overridden image does not contain the `idsvr` user (e.g. a stripped-down local build), it is
+created on the fly during the layered image build so the chown and `USER idsvr` switch still succeed.
 
 After the container has started, use the convenience accessors to connect to it:
 

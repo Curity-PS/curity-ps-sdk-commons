@@ -197,11 +197,6 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
                                                   List<Map.Entry<Path, String>> files, String baseImage) {
         def baseConfigContent = readBaseConfig()
         def baseConfigTemp = createTempFile(baseConfigContent, "base-config", ".xml")
-        def hasIdsvrUser = imageHasUser(baseImage, "idsvr")
-        if (!hasIdsvrUser) {
-            logger.info("Base image '{}' has no 'idsvr' user — skipping chown and USER switch; " +
-                    "container will run as the base image's default user.", baseImage)
-        }
         def image = new ImageFromDockerfile()
                 .withDockerfileFromBuilder { builder ->
                     def b = builder.from(baseImage)
@@ -225,19 +220,21 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
                         b.copy(contextName, entry.value)
                     }
 
-                    // mkdir -p guards against base images that don't ship the plugins
-                    // directory by default (e.g. some local/dev builds).
-                    if (hasIdsvrUser) {
-                        b.run("mkdir -p /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins && " +
-                                "chown -R idsvr:idsvr /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
-                    } else {
-                        b.run("mkdir -p /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
-                    }
-                    b.run("ln -sf /dev/stdout /opt/idsvr/var/log/confsvc.log")
-                    if (hasIdsvrUser) {
-                        b.user("idsvr")
-                    }
-                    b.env("LOGGING_LEVEL", "DEBUG")
+                    // Ensure the idsvr user/group exist (some local/dev base images
+                    // strip them out) and that the target directories exist before
+                    // chowning. Appending directly to /etc/passwd and /etc/group is
+                    // distro-agnostic — it works whether the image has useradd,
+                    // adduser, or neither.
+                    b.run("set -eu; " +
+                            "if ! getent passwd idsvr >/dev/null 2>&1; then " +
+                                "echo 'idsvr:x:9999:9999:idsvr:/opt/idsvr:/bin/false' >> /etc/passwd; " +
+                                "echo 'idsvr:x:9999:' >> /etc/group; " +
+                            "fi; " +
+                            "mkdir -p /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins; " +
+                            "chown -R idsvr:idsvr /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
+                            .run("ln -sf /dev/stdout /opt/idsvr/var/log/confsvc.log")
+                            .user("idsvr")
+                            .env("LOGGING_LEVEL", "DEBUG")
                             .env("SERVICE_ROLE", "default")
                             .env("ADMIN", "true")
                             .build()
@@ -426,40 +423,6 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
                     versionOverride ? "$TEST_VERSION_ENV=$versionOverride" : "")
         }
         return resolved
-    }
-
-    /**
-     * Cache of "image -> does user X exist" lookups so we only pay the
-     * inspection cost once per JVM session per image+user combination.
-     */
-    private static final java.util.concurrent.ConcurrentMap<String, Boolean> USER_EXISTS_CACHE =
-            new java.util.concurrent.ConcurrentHashMap<>()
-
-    /**
-     * Check whether the given image contains the given OS user by running
-     * {@code id <user>} as a one-shot container. Returns {@code false} if the
-     * user is missing or if the check itself fails for any reason — callers
-     * use this to decide whether to chown / USER-switch in the layered build.
-     */
-    private static boolean imageHasUser(String image, String username) {
-        return USER_EXISTS_CACHE.computeIfAbsent("$image|$username".toString(), { key ->
-            try {
-                def pb = new ProcessBuilder("docker", "run", "--rm", "--entrypoint", "id", image, username)
-                pb.redirectErrorStream(true)
-                def proc = pb.start()
-                proc.inputStream.bytes // drain so the process can exit
-                def finished = proc.waitFor(60, java.util.concurrent.TimeUnit.SECONDS)
-                if (!finished) {
-                    proc.destroyForcibly()
-                    logger.warn("Timed out checking whether user '{}' exists in image '{}'", username, image)
-                    return false
-                }
-                return proc.exitValue() == 0
-            } catch (Exception e) {
-                logger.warn("Could not check user '{}' in image '{}': {}", username, image, e.message)
-                return false
-            }
-        })
     }
 
     /**
