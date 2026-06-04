@@ -225,10 +225,18 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
                     // chowning. Appending directly to /etc/passwd and /etc/group is
                     // distro-agnostic — it works whether the image has useradd,
                     // adduser, or neither.
+                    //
+                    // When we create the user ourselves, also reassign ownership of
+                    // the whole /opt/idsvr tree so the server can write to its state
+                    // directories (var/cdb, var/log, etc.) which were owned by the
+                    // image's original user (typically root) before. This broad chown
+                    // is skipped on the official image where idsvr already owns its
+                    // own files.
                     b.run("set -eu; " +
                             "if ! getent passwd idsvr >/dev/null 2>&1; then " +
                                 "echo 'idsvr:x:9999:9999:idsvr:/opt/idsvr:/bin/false' >> /etc/passwd; " +
                                 "echo 'idsvr:x:9999:' >> /etc/group; " +
+                                "chown -R idsvr:idsvr /opt/idsvr; " +
                             "fi; " +
                             "mkdir -p /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins; " +
                             "chown -R idsvr:idsvr /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
