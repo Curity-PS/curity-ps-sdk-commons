@@ -234,6 +234,7 @@ final class CurityServerContainer extends GenericContainer<CurityServerContainer
                             "chown -R idsvr:idsvr /opt/idsvr/etc/init /opt/idsvr/usr/share/plugins")
                             .run("ln -sf /dev/stdout /opt/idsvr/var/log/confsvc.log")
                             .user("idsvr")
+                            .env("PATH", '/opt/idsvr/bin:$PATH')
                             .env("LOGGING_LEVEL", "DEBUG")
                             .env("SERVICE_ROLE", "default")
                             .env("ADMIN", "true")
