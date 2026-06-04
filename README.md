@@ -80,6 +80,41 @@ def container = CurityServerContainer.withVersion("11.0")
 container.start()
 ```
 
+#### Overriding the image
+
+To test against an unreleased build or a locally produced image, use the `withImage` factory instead of
+`withVersion`:
+
+```groovy
+def container = CurityServerContainer.withImage("docker.io/curity/local-build:dev")
+        .withPlugin("build/distributions/my-plugin")
+container.start()
+```
+
+#### Overriding the image via environment variables
+
+The base image can be overridden at runtime via environment variables, which take precedence over
+`withImage` / `withVersion`:
+
+- `TEST_IMAGE` — overrides the repository portion (e.g. `docker.io/curity/local-build`)
+- `TEST_VERSION` — overrides the tag portion (e.g. `11.3`)
+
+Either can be set independently. For example, to run the test suite against version 11.3 without touching
+the code:
+
+```sh
+TEST_VERSION=11.3 ./gradlew integrationTest
+```
+
+To run against a locally built image with a specific tag:
+
+```sh
+TEST_IMAGE=docker.io/curity/local-build TEST_VERSION=dev ./gradlew integrationTest
+```
+
+If the overridden image does not contain the `idsvr` user (e.g. a stripped-down local build), it is
+created on the fly during the layered image build so the chown and `USER idsvr` switch still succeed.
+
 After the container has started, use the convenience accessors to connect to it:
 
 ```groovy
